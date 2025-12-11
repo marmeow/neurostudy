@@ -7,7 +7,7 @@ import { LEARNING_PROFILES, getProfileById } from '../config/profiles.js';
 class ChatService {
     constructor() {
         this.groq = null;
-        this.model = 'llama-3.3-70b-versatile'; // Updated model (3.1 was decommissioned)
+        this.model = 'llama-3.3-70b-versatile';
         this.isConfigured = null;
     }
 
@@ -21,16 +21,21 @@ class ChatService {
 
         const apiKey = process.env.GROQ_API_KEY;
 
+        console.log('🔍 Chat Service: Checking GROQ_API_KEY...');
+        console.log('   Key exists:', !!apiKey);
+        console.log('   Key length:', apiKey ? apiKey.length : 0);
+
         if (apiKey && apiKey !== 'your_api_key_here' && apiKey.length > 10) {
             try {
                 this.groq = new Groq({ apiKey });
                 this.isConfigured = true;
-                console.log('✅ Chat Service: Groq configured');
+                console.log('✅ Chat Service: Groq configured successfully');
             } catch (error) {
                 console.warn('⚠️ Chat Service: Could not initialize Groq:', error.message);
                 this.isConfigured = false;
             }
         } else {
+            console.warn('⚠️ Chat Service: GROQ_API_KEY not configured');
             this.isConfigured = false;
         }
 
@@ -166,7 +171,7 @@ INSTRUCCIONS:
                 error: 'El servei de xat no està disponible',
                 fallback: {
                     role: 'assistant',
-                    content: 'Ho sento, el servei de xat no està disponible en aquest moment. Si us plau, torna-ho a provar més tard.'
+                    content: 'Ho sento, el servei de xat no està disponible en aquest moment. Si us plau, comprova que la GROQ_API_KEY estigui configurada correctament al fitxer .env'
                 }
             };
         }

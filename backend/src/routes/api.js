@@ -4,14 +4,14 @@ import { LEARNING_PROFILES, getProfileById, getAllProfiles } from '../config/pro
 
 const router = express.Router();
 
-// Lazy load AI service (to ensure env vars are loaded first)
-let aiServiceInstance = null;
-const getAIService = async () => {
-    if (!aiServiceInstance) {
-        const module = await import('../services/aiService.js');
-        aiServiceInstance = module.default;
+// Lazy load Profile Analyzer service
+let profileAnalyzerInstance = null;
+const getProfileAnalyzer = async () => {
+    if (!profileAnalyzerInstance) {
+        const module = await import('../services/profileAnalyzer.js');
+        profileAnalyzerInstance = module.default;
     }
-    return aiServiceInstance;
+    return profileAnalyzerInstance;
 };
 
 /**
@@ -101,33 +101,21 @@ router.post('/analyze', async (req, res) => {
             });
         }
 
-        // Get AI service (lazy loaded to ensure env vars are available)
-        console.log('🔄 Loading AI Service...');
-        const aiService = await getAIService();
-        console.log('   AI Service loaded, isConfigured:', aiService.isConfigured);
+        // Get Profile Analyzer service
+        console.log('🔄 Loading Profile Analyzer...');
+        const profileAnalyzer = await getProfileAnalyzer();
 
-        // Use AI to analyze the answers
-        console.log('🧠 Calling analyzeProfile...');
-        const result = await aiService.analyzeProfile(QUESTIONNAIRE, answers, userInfo);
+        // Analyze the answers using our algorithm
+        console.log('🧠 Analyzing profile...');
+        const result = profileAnalyzer.analyzeProfile(QUESTIONNAIRE, answers, userInfo);
         console.log('   Result success:', result.success);
-        console.log('   Has warning:', !!result.warning);
-        if (result.error) console.log('   Error:', result.error);
+        console.log('   Primary profile:', result.data?.primaryProfile);
+        console.log('   Confidence:', result.data?.confidence + '%');
 
-        if (result.success) {
-            res.json({
-                success: true,
-                data: result.data,
-                warning: result.warning // Include any warning from the service
-            });
-        } else {
-            // Return fallback analysis if AI fails
-            console.log('⚠️ Using fallback analysis');
-            res.json({
-                success: true,
-                data: result.fallback,
-                warning: 'Análisis realizado sin IA debido a un error temporal'
-            });
-        }
+        res.json({
+            success: true,
+            data: result.data
+        });
     } catch (error) {
         console.error('❌ Analysis Error:', error);
         res.status(500).json({
@@ -143,46 +131,147 @@ router.post('/analyze', async (req, res) => {
  * 
  * Body:
  * {
- *   profileId: "visual-espacial",
+ *   profileId: "visualis",
  *   topic: "JavaScript básico",
  *   duration: "2 semanas"
  * }
  */
 router.post('/study-plan', async (req, res) => {
     try {
-        const { profileId, topic, duration = '1 semana' } = req.body;
+        const { profileId, topic, duration = '1 setmana' } = req.body;
 
         if (!profileId || !topic) {
             return res.status(400).json({
                 success: false,
-                error: 'Se requiere profileId y topic'
+                error: 'Es requereix profileId i topic'
             });
         }
 
-        // Get AI service (lazy loaded)
-        const aiService = await getAIService();
+        const profile = getProfileById(profileId);
 
-        const result = await aiService.generateStudyPlan(profileId, topic, duration);
-
-        if (result.success) {
-            res.json({
-                success: true,
-                data: result.data
-            });
-        } else {
-            res.status(500).json({
+        if (!profile) {
+            return res.status(404).json({
                 success: false,
-                error: result.error
+                error: 'Perfil no trobat'
             });
         }
+
+        // Generate study plan based on profile preferences
+        const studyPlan = generateStudyPlan(profile, topic, duration);
+
+        res.json({
+            success: true,
+            data: studyPlan
+        });
     } catch (error) {
         console.error('Study Plan Error:', error);
         res.status(500).json({
             success: false,
-            error: 'Error al generar el plan de estudio'
+            error: 'Error al generar el pla d\'estudi'
         });
     }
 });
+
+/**
+ * Genera un pla d'estudi basat en el perfil de l'usuari
+ */
+function generateStudyPlan(profile, topic, duration) {
+    const durationDays = parseDuration(duration);
+
+    // Plantillas de actividades por perfil
+    const activityTemplates = {
+        'visualis': [
+            `Mira un vídeo introductori sobre ${topic}`,
+            `Crea un mapa mental dels conceptes clau`,
+            `Busca infografies relacionades amb ${topic}`,
+            `Dibuixa un diagrama que resumeixi el que has après`,
+            `Repassa amb flashcards visuals`
+        ],
+        'narra': [
+            `Llegeix una història o cas real sobre ${topic}`,
+            `Busca exemples pràctics de la vida quotidiana`,
+            `Escriu un resum com si expliquessis una història`,
+            `Troba documentals o podcasts sobre ${topic}`,
+            `Connecta el tema amb experiències personals`
+        ],
+        'logika': [
+            `Llegeix la definició formal de ${topic}`,
+            `Crea una llista ordenada dels conceptes principals`,
+            `Fes una taula comparativa dels elements clau`,
+            `Segueix un tutorial pas a pas`,
+            `Resol exercicis estructurats`
+        ],
+        'prax': [
+            `Fes un exercici pràctic introductori sobre ${topic}`,
+            `Experimenta amb un projecte petit`,
+            `Practica amb errors i aprèn d'ells`,
+            `Crea alguna cosa tangible relacionada amb el tema`,
+            `Resol reptes pràctics`
+        ],
+        'kreo': [
+            `Explora lliurement recursos sobre ${topic}`,
+            `Planteja les teves pròpies preguntes`,
+            `Busca connexions amb altres temes que coneguis`,
+            `Proposa una solució creativa a un problema`,
+            `Crea un projecte personal únic`
+        ]
+    };
+
+    const activities = activityTemplates[profile.id] || activityTemplates['logika'];
+    const dailyPlan = [];
+
+    for (let day = 1; day <= durationDays; day++) {
+        const dayActivities = [];
+        const activityIndex = (day - 1) % activities.length;
+
+        dayActivities.push(activities[activityIndex]);
+        if (day <= 3) {
+            dayActivities.push(`Pren notes amb el teu estil ${profile.shortDescription.toLowerCase()}`);
+        } else {
+            dayActivities.push(`Repassa el que has après els dies anteriors`);
+        }
+
+        dailyPlan.push({
+            day,
+            activities: dayActivities,
+            resources: profile.contentRecommendations.slice(0, 2),
+            duration: '1-2 hores'
+        });
+    }
+
+    return {
+        topic,
+        duration,
+        profile: profile.name,
+        objectives: [
+            `Comprendre els conceptes bàsics de ${topic}`,
+            `Aplicar el coneixement amb el teu estil ${profile.shortDescription.toLowerCase()}`,
+            `Consolidar l'aprenentatge amb pràctica regular`
+        ],
+        dailyPlan,
+        tips: profile.learningStrategies.slice(0, 3),
+        generatedAt: new Date().toISOString()
+    };
+}
+
+/**
+ * Parseja la duració i retorna el nombre de dies
+ */
+function parseDuration(duration) {
+    const lower = duration.toLowerCase();
+    if (lower.includes('setman')) {
+        const weeks = parseInt(lower) || 1;
+        return weeks * 7;
+    }
+    if (lower.includes('di')) {
+        return parseInt(lower) || 7;
+    }
+    if (lower.includes('mes')) {
+        const months = parseInt(lower) || 1;
+        return months * 30;
+    }
+    return 7; // Default: 1 semana
+}
 
 // Lazy load Chat service
 let chatServiceInstance = null;
