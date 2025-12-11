@@ -186,13 +186,6 @@ const tancarXat = () => {
           <!-- Accions de la capçalera -->
           <div class="accions-capsalera">
             <!-- Indicador d'accessibilitat activa -->
-            <button 
-              v-if="adaptacionsActives.length > 0" 
-              class="indicador-accessibilitat" 
-              title="Accessibilitat activa"
-            >
-              ♿ {{ adaptacionsActives.length }}
-            </button>
             <p class="eslogan">Tecnologia amb empatia</p>
           </div>
         </div>
@@ -396,7 +389,8 @@ const tancarXat = () => {
 }
 
 .logo img {
-  width: 80%;
+  width: 30%;
+  height: auto;
 }
 
 .logo:hover {
