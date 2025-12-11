@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue' // ¡Importamos onMounted!
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import AccessibilityForm from './components/AccessibilityForm.vue'
 import Questionnaire from './components/Questionnaire.vue'
@@ -20,16 +20,65 @@ const activeAdaptations = ref([])
 // API base URL
 const API_URL = 'http://localhost:3000/api'
 
-// Computed CSS classes for accessibility
-const accessibilityClasses = computed(() => {
-  const classes = []
-  for (const adaptation of activeAdaptations.value) {
+// ============================================
+// LÓGICA DE APLICACIÓN DE ADAPTACIONES GLOBALES
+// ============================================
+
+/**
+ * Aplica las clases CSS y variables al elemento raíz del documento (<html>)
+ * para cambiar el tema de la web.
+ * @param {Array} adaptations - Lista de objetos de adaptación activa.
+ */
+const applyGlobalStyles = (adaptations) => {
+  // Usamos el elemento <html> para aplicar los cambios globales
+  const rootElement = document.documentElement;
+
+  // --- 1. Limpieza ---
+  // Elimina las clases de accesibilidad previas
+  const classesToRemove = Array.from(rootElement.classList).filter(cls =>
+    cls.startsWith('accessibility-')
+  );
+  classesToRemove.forEach(cls => rootElement.classList.remove(cls));
+
+  // Limpieza de estilos de variables CSS inyectados
+  rootElement.style.cssText = '';
+
+  // --- 2. Aplicación ---
+  adaptations.forEach(adaptation => {
+    // A) Aplicar Clases CSS (Tu CSS global se encarga de estos)
     if (adaptation.cssClass) {
-      classes.push(adaptation.cssClass)
+      rootElement.classList.add(adaptation.cssClass);
+    }
+
+    // B) Aplicar Variables CSS (Para sobrescribir colores, tamaños de fuente, etc.)
+    if (adaptation.cssVars) {
+      for (const [variable, value] of Object.entries(adaptation.cssVars)) {
+        rootElement.style.setProperty(variable, value);
+      }
+    }
+
+    // C) Manejar Features (Ej: TextToSpeech, subtítulos)
+    if (adaptation.feature) {
+      // Aquí podrías activar funcionalidades complejas (ej. iniciar un servicio de lector de pantalla)
+      // console.log(`Feature activada: ${adaptation.feature}`);
+    }
+  });
+};
+
+// Se ejecuta al cargar el componente
+onMounted(() => {
+  const savedAdaptations = localStorage.getItem('activeAdaptations');
+  if (savedAdaptations) {
+    try {
+      const adaptations = JSON.parse(savedAdaptations);
+      activeAdaptations.value = adaptations; // Actualiza el estado reactivo
+      applyGlobalStyles(adaptations); // Aplica los estilos inmediatamente
+    } catch (e) {
+      console.error('Error loading saved adaptations:', e);
+      localStorage.removeItem('activeAdaptations');
     }
   }
-  return classes.join(' ')
-})
+});
 
 // Navigation handlers
 const startAssessment = () => {
@@ -39,17 +88,28 @@ const startAssessment = () => {
 const handleAccessibilityComplete = (data) => {
   accessibilitySettings.value = data.answers || {}
   activeAdaptations.value = data.adaptations || []
+
+  // ¡CAMBIO CLAVE 1: Aplicar estilos y guardar persistencia!
+  applyGlobalStyles(activeAdaptations.value);
+  localStorage.setItem('activeAdaptations', JSON.stringify(activeAdaptations.value));
+
   currentView.value = 'questionnaire'
 }
 
 const handleAccessibilitySkip = () => {
+  activeAdaptations.value = [];
+
+  // ¡CAMBIO CLAVE 2: Limpiar estilos si se salta el paso!
+  applyGlobalStyles([]);
+  localStorage.removeItem('activeAdaptations');
+
   currentView.value = 'questionnaire'
 }
 
 const handleQuestionnaireComplete = async (answers) => {
   isLoading.value = true
   error.value = null
-  
+
   try {
     const response = await fetch(`${API_URL}/analyze`, {
       method: 'POST',
@@ -58,9 +118,9 @@ const handleQuestionnaireComplete = async (answers) => {
       },
       body: JSON.stringify({ answers })
     })
-    
+
     const data = await response.json()
-    
+
     if (data.success) {
       profileResult.value = data.data
       currentView.value = 'result'
@@ -89,9 +149,12 @@ const closeChat = () => {
   showChat.value = false
 }
 
-// Text-to-Speech functionality
+// Text-to-Speech functionality (si quieres que funcione, debe leer el estado accessibilitySettings)
 const speakText = (text) => {
-  if ('speechSynthesis' in window && accessibilitySettings.value.textToSpeech) {
+  // Asumiendo que 'textToSpeech' es el ID de la adaptación o una propiedad de accessibilitySettings
+  const isTtsActive = activeAdaptations.value.some(a => a.id === 'textToSpeech');
+
+  if ('speechSynthesis' in window && isTtsActive) {
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'ca-ES' // Catalan
     window.speechSynthesis.speak(utterance)
@@ -100,32 +163,27 @@ const speakText = (text) => {
 </script>
 
 <template>
-  <div class="app" :class="accessibilityClasses">
+  <div class="app">
     <!-- Skip to content link for accessibility -->
-
+    <a href="#main-content" class="skip-link">Saltar contingut principal</a>
     <!-- Background decorations -->
     <div class="bg-decoration" aria-hidden="true">
       <div class="bg-circle bg-circle-1"></div>
       <div class="bg-circle bg-circle-2"></div>
       <div class="bg-circle bg-circle-3"></div>
     </div>
-    
+
     <!-- Header -->
     <header class="header">
       <div class="container">
         <div class="header-content">
           <div class="logo" @click="restartAssessment" role="button" tabindex="0" @keydown.enter="restartAssessment">
-            <span class="logo-icon" aria-hidden="true">🧠</span>
-            <span class="logo-text">NeuroStudy<span class="logo-ai">AI</span></span>
+            <img src="/logo.png" alt="logo">
           </div>
-          
+
           <!-- Accessibility Quick Toggle -->
           <div class="header-actions">
-            <button 
-              v-if="activeAdaptations.length > 0"
-              class="accessibility-indicator"
-              title="Accessibilitat activa"
-            >
+            <button v-if="activeAdaptations.length > 0" class="accessibility-indicator" title="Accessibilitat activa">
               ♿ {{ activeAdaptations.length }}
             </button>
             <p class="tagline">Tecnologia amb empatia</p>
@@ -156,36 +214,18 @@ const speakText = (text) => {
 
         <!-- Dynamic Views -->
         <Transition name="fade" mode="out-in">
-          <WelcomeScreen 
-            v-if="currentView === 'welcome' && !isLoading && !error" 
-            :key="'welcome'"
-            @start="startAssessment" 
-          />
-          
-          <AccessibilityForm
-            v-else-if="currentView === 'accessibility' && !isLoading && !error"
-            :key="'accessibility'"
-            @complete="handleAccessibilityComplete"
-            @skip="handleAccessibilitySkip"
-          />
-          
-          <Questionnaire 
-            v-else-if="currentView === 'questionnaire' && !isLoading && !error" 
-            :key="'questionnaire'"
-            @complete="handleQuestionnaireComplete"
-            @back="currentView = 'accessibility'"
-          />
-          
-          <div 
-            v-else-if="currentView === 'result' && !isLoading && !error"
-            :key="'result'"
-            class="result-container"
-          >
-            <ProfileResult 
-              :result="profileResult"
-              @restart="restartAssessment"
-            />
-            
+          <WelcomeScreen v-if="currentView === 'welcome' && !isLoading && !error" :key="'welcome'"
+            @start="startAssessment" />
+
+          <AccessibilityForm v-else-if="currentView === 'accessibility' && !isLoading && !error" :key="'accessibility'"
+            @complete="handleAccessibilityComplete" @skip="handleAccessibilitySkip" />
+
+          <Questionnaire v-else-if="currentView === 'questionnaire' && !isLoading && !error" :key="'questionnaire'"
+            @complete="handleQuestionnaireComplete" @back="currentView = 'accessibility'" />
+
+          <div v-else-if="currentView === 'result' && !isLoading && !error" :key="'result'" class="result-container">
+            <ProfileResult :result="profileResult" @restart="restartAssessment" />
+
             <!-- Chat Button -->
             <div class="chat-button-container" v-if="!showChat">
               <button class="chat-fab" @click="openChat" aria-label="Obrir xat amb IA">
@@ -200,12 +240,8 @@ const speakText = (text) => {
       <!-- Chat Panel -->
       <Transition name="slide-up">
         <div v-if="showChat && profileResult" class="chat-panel">
-          <Chat
-            :profileId="profileResult.primaryProfile"
-            :profileDetails="profileResult.primaryProfileDetails"
-            :accessibilitySettings="accessibilitySettings"
-            @close="closeChat"
-          />
+          <Chat :profileId="profileResult.primaryProfile" :profileDetails="profileResult.primaryProfileDetails"
+            :accessibilitySettings="accessibilitySettings" @close="closeChat" />
         </div>
       </Transition>
     </main>
@@ -315,26 +351,12 @@ const speakText = (text) => {
   transition: transform var(--transition-fast);
 }
 
-.logo:hover {
+.logo img {
+  width: 80%;
+}
+
+.logo img:hover {
   transform: scale(1.02);
-}
-
-.logo-icon {
-  font-size: 2rem;
-}
-
-.logo-text {
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: white;
-}
-
-.logo-ai {
-  background: linear-gradient(135deg, var(--primary-400), var(--accent-purple));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
 }
 
 .tagline {
@@ -374,7 +396,9 @@ const speakText = (text) => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-state p {
@@ -493,11 +517,11 @@ const speakText = (text) => {
     gap: var(--space-sm);
     text-align: center;
   }
-  
+
   .header-actions {
     flex-direction: column;
   }
-  
+
   .tagline {
     display: none;
   }
