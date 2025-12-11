@@ -1,313 +1,324 @@
+<!-- WelcomeScreen.vue - Pantalla de benvinguda -->
 <script setup>
-import { ref } from 'vue'
-
+// Definim l'event que s'enviarà al component pare quan es faci clic a "Començar"
 const emit = defineEmits(['start'])
 
-const features = [
+// Llista de característiques principals de l'app
+const caracteristiques = [
   {
-    icon: '🧠',
-    title: 'IA Adaptativa',
-    description: 'Analitzem la teva forma d\'aprendre usant intel·ligència artificial'
+    icona: '🧠',
+    titol: 'IA que s\'adapta a tu',
+    descripcio: 'Descobrim com aprens millor'
   },
   {
-    icon: '📊',
-    title: '5 Perfils Cognitius',
-    description: 'Descobreix quin dels 5 perfils d\'aprenentatge s\'adapta a tu'
+    icona: '📊',
+    titol: '5 Perfils diferents',
+    descripcio: 'Troba el teu estil d\'aprenentatge'
   },
   {
-    icon: '💬',
-    title: 'Xat Personalitzat',
-    description: 'Parla amb la IA adaptada al teu estil d\'aprenentatge'
+    icona: '💬',
+    titol: 'Xat intel·ligent',
+    descripcio: 'Parla amb una IA que t\'entén'
   },
   {
-    icon: '♿',
-    title: 'Accessibilitat Total',
-    description: 'La plataforma s\'adapta a les teves necessitats visuals, auditives i motores'
+    icona: '♿',
+    titol: 'Per a tothom',
+    descripcio: 'Adaptat a les teves necessitats'
   }
 ]
 
-const profiles = [
-  { emoji: '🎨', name: 'Visualis', color: '#8b5cf6', description: 'Visual' },
-  { emoji: '📖', name: 'Narra', color: '#22c55e', description: 'Narratiu' },
-  { emoji: '🔢', name: 'Logika', color: '#3b82f6', description: 'Analític' },
-  { emoji: '🔧', name: 'Prax', color: '#f97316', description: 'Pràctic' },
-  { emoji: '💡', name: 'Kreo', color: '#ec4899', description: 'Creatiu' }
+// Els 5 tipus de perfils d'aprenentatge
+const perfils = [
+  { emoji: '🎨', nom: 'Visualis', color: '#8b5cf6', tipus: 'Visual' },
+  { emoji: '📖', nom: 'Narra', color: '#22c55e', tipus: 'Narratiu' },
+  { emoji: '🔢', nom: 'Logika', color: '#3b82f6', tipus: 'Analític' },
+  { emoji: '🔧', nom: 'Prax', color: '#f97316', tipus: 'Pràctic' },
+  { emoji: '💡', nom: 'Kreo', color: '#ec4899', tipus: 'Creatiu' }
 ]
 </script>
 
 <template>
-  <div class="welcome animate-slide-up">
-    <!-- Hero Section -->
-    <section class="hero">
-      <div class="hero-badge">
+  <div class="pantalla-benvinguda">
+    
+    <!-- Secció principal amb el títol i botó -->
+    <section class="seccio-principal">
+      <!-- Etiqueta decorativa -->
+      <div class="etiqueta">
         <span>✨ Tecnologia amb empatia</span>
       </div>
-      
-      <h1 class="hero-title">
+
+      <!-- Títol principal -->
+      <h1 class="titol-gran">
         Descobreix el teu <span class="text-gradient">Perfil d'Aprenentatge</span>
       </h1>
-      
-      <p class="hero-subtitle">
+
+      <!-- Descripció -->
+      <p class="subtitol">
         Cada ment és única. La nostra IA analitza com processes la informació 
         per adaptar l'experiència d'aprenentatge a la teva forma de pensar.
       </p>
 
-      <button class="btn btn-primary btn-lg hero-cta" @click="emit('start')">
+      <!-- Botó per començar -->
+      <button class="btn btn-primary btn-lg boto-gran" @click="emit('start')">
         <span>Començar Avaluació</span>
-        <span class="btn-arrow">→</span>
+        <span class="fletxa">→</span>
       </button>
 
-      <p class="hero-time">
-        <span class="time-icon">⏱️</span>
+      <!-- Temps estimat -->
+      <p class="temps">
+        <span>⏱️</span>
         Només 5-7 minuts · 12 preguntes
       </p>
     </section>
 
-    <!-- Profiles Preview -->
-    <section class="profiles-preview">
+    <!-- Mostra els 5 perfils -->
+    <section class="seccio-perfils">
       <h3>Els 5 Perfils Cognitius</h3>
-      <div class="profiles-grid">
+      
+      <div class="llista-perfils">
         <div 
-          v-for="profile in profiles" 
-          :key="profile.name" 
-          class="profile-chip"
-          :style="{ '--profile-color': profile.color }"
+          v-for="perfil in perfils" 
+          :key="perfil.nom" 
+          class="targeta-perfil"
+          :style="{ '--color-perfil': perfil.color }"
         >
-          <span class="profile-emoji">{{ profile.emoji }}</span>
-          <div class="profile-info">
-            <span class="profile-name">{{ profile.name }}</span>
-            <span class="profile-desc">{{ profile.description }}</span>
+          <span class="emoji-gran">{{ perfil.emoji }}</span>
+          <div>
+            <div class="nom-perfil">{{ perfil.nom }}</div>
+            <div class="tipus-perfil">{{ perfil.tipus }}</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Features Grid -->
-    <section class="features">
-      <div class="features-grid">
-        <div v-for="feature in features" :key="feature.title" class="feature-card card">
-          <span class="feature-icon">{{ feature.icon }}</span>
-          <h4>{{ feature.title }}</h4>
-          <p>{{ feature.description }}</p>
+    <!-- Característiques de l'app -->
+    <section class="seccio-caracteristiques">
+      <div class="graella">
+        <div 
+          v-for="car in caracteristiques" 
+          :key="car.titol" 
+          class="targeta card"
+        >
+          <span class="icona-gran">{{ car.icona }}</span>
+          <h4>{{ car.titol }}</h4>
+          <p>{{ car.descripcio }}</p>
         </div>
       </div>
     </section>
 
-    <!-- Info Box -->
-    <section class="info-box card-glass">
-      <div class="info-content">
-        <span class="info-icon">💡</span>
-        <div>
-          <h4>Per què és important conèixer el teu perfil?</h4>
-          <p>
-            Les persones aprenem de formes molt diferents. Conèixer el teu perfil 
-            t'ajudarà a triar els mètodes d'estudi més efectius per a tu, 
-            estalviant temps i millorant la retenció de coneixements.
-          </p>
-        </div>
+    <!-- Caixa informativa -->
+    <section class="caixa-info card-glass">
+      <span class="icona-info">💡</span>
+      <div>
+        <h4>Per què és important?</h4>
+        <p>
+          Les persones aprenem de formes molt diferents. Conèixer el teu perfil 
+          t'ajudarà a triar els millors mètodes d'estudi per a tu.
+        </p>
       </div>
     </section>
+
   </div>
 </template>
 
 <style scoped>
-.welcome {
+/* Contenidor principal */
+.pantalla-benvinguda {
   width: 100%;
+  animation: apareixer 0.5s ease-out;
 }
 
-/* Hero Section */
-.hero {
+/* Animació d'entrada */
+@keyframes apareixer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* === SECCIÓ PRINCIPAL === */
+.seccio-principal {
   text-align: center;
-  margin-bottom: var(--space-3xl);
+  margin-bottom: 80px;
 }
 
-.hero-badge {
+.etiqueta {
   display: inline-block;
-  padding: var(--space-sm) var(--space-lg);
+  padding: 8px 24px;
   background: rgba(139, 92, 246, 0.2);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: var(--radius-full);
-  font-size: 0.875rem;
+  border-radius: 50px;
+  font-size: 14px;
   color: var(--accent-purple);
-  margin-bottom: var(--space-xl);
+  margin-bottom: 32px;
 }
 
-.hero-title {
+.titol-gran {
   font-size: 3rem;
   line-height: 1.1;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
 }
 
-.hero-subtitle {
+.subtitol {
   font-size: 1.125rem;
   color: var(--gray-300);
   max-width: 600px;
-  margin: 0 auto var(--space-xl);
+  margin: 0 auto 32px;
 }
 
-.hero-cta {
-  margin-bottom: var(--space-lg);
+.boto-gran {
+  margin-bottom: 24px;
 }
 
-.btn-arrow {
-  transition: transform var(--transition-fast);
+.fletxa {
+  transition: transform 0.2s;
 }
 
-.hero-cta:hover .btn-arrow {
+.boto-gran:hover .fletxa {
   transform: translateX(4px);
 }
 
-.hero-time {
+.temps {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
-  font-size: 0.875rem;
+  gap: 8px;
+  font-size: 14px;
   color: var(--gray-400);
 }
 
-.time-icon {
-  font-size: 1rem;
-}
-
-/* Profiles Preview */
-.profiles-preview {
+/* === PERFILS === */
+.seccio-perfils {
   text-align: center;
-  margin-bottom: var(--space-3xl);
+  margin-bottom: 80px;
 }
 
-.profiles-preview h3 {
+.seccio-perfils h3 {
   font-size: 1rem;
   color: var(--gray-400);
-  font-weight: 500;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 2px;
 }
 
-.profiles-grid {
+.llista-perfils {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.profile-chip {
+.targeta-perfil {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  gap: 12px;
+  padding: 12px 24px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
-  transition: all var(--transition-fast);
+  border-radius: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
 }
 
-.profile-chip:hover {
+.targeta-perfil:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--profile-color);
+  border-color: var(--color-perfil);
   transform: translateY(-2px);
 }
 
-.profile-emoji {
+.emoji-gran {
   font-size: 1.5rem;
 }
 
-.profile-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.profile-name {
+.nom-perfil {
   font-size: 0.9rem;
   font-weight: 600;
   color: white;
 }
 
-.profile-desc {
+.tipus-perfil {
   font-size: 0.75rem;
   color: var(--gray-400);
 }
 
-/* Features Grid */
-.features {
-  margin-bottom: var(--space-3xl);
+/* === CARACTERÍSTIQUES === */
+.seccio-caracteristiques {
+  margin-bottom: 80px;
 }
 
-.features-grid {
+.graella {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: var(--space-lg);
+  gap: 24px;
 }
 
-.feature-card {
+.targeta {
   text-align: center;
-  padding: var(--space-xl);
+  padding: 32px;
 }
 
-.feature-icon {
+.icona-gran {
   font-size: 2.5rem;
   display: block;
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
 }
 
-.feature-card h4 {
-  margin-bottom: var(--space-sm);
+.targeta h4 {
+  margin-bottom: 8px;
   font-size: 1.125rem;
 }
 
-.feature-card p {
+.targeta p {
   font-size: 0.875rem;
   color: var(--gray-400);
 }
 
-/* Info Box */
-.info-box {
-  padding: var(--space-xl);
-}
-
-.info-content {
+/* === CAIXA INFO === */
+.caixa-info {
   display: flex;
-  gap: var(--space-lg);
-  align-items: flex-start;
+  gap: 24px;
+  padding: 32px;
 }
 
-.info-icon {
+.icona-info {
   font-size: 2rem;
   flex-shrink: 0;
 }
 
-.info-content h4 {
-  margin-bottom: var(--space-sm);
+.caixa-info h4 {
+  margin-bottom: 8px;
   font-size: 1.125rem;
 }
 
-.info-content p {
+.caixa-info p {
   font-size: 0.9rem;
   color: var(--gray-400);
   line-height: 1.6;
 }
 
-/* Responsive */
+/* === RESPONSIVE === */
 @media (max-width: 768px) {
-  .hero-title {
+  .titol-gran {
     font-size: 2rem;
   }
 
-  .hero-subtitle {
+  .subtitol {
     font-size: 1rem;
   }
 
-  .profiles-grid {
-    gap: var(--space-sm);
+  .llista-perfils {
+    gap: 8px;
   }
 
-  .profile-chip {
-    padding: var(--space-sm) var(--space-md);
+  .targeta-perfil {
+    padding: 8px 16px;
   }
 
-  .info-content {
+  .caixa-info {
     flex-direction: column;
     text-align: center;
   }

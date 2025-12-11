@@ -1,149 +1,171 @@
+<!-- AccessibilityForm.vue - Formulari per personalitzar l'accessibilitat -->
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
 const emit = defineEmits(['complete', 'skip'])
 
-const API_URL = 'http://localhost:3000/api'
+const URL_API = 'http://localhost:3000/api'
 
-// State
-const accessibilityData = ref(null)
-const isLoading = ref(true)
-const answers = ref({})
-const currentCategory = ref(0)
+// === ESTAT DEL FORMULARI ===
+// Dades del formulari d'accessibilitat
+const dadesAccessibilitat = ref(null)
 
-// Load accessibility questions
+// Està carregant?
+const estaCarregant = ref(true)
+
+// Respostes de l'usuari (qüestionId: true/false)
+const respostes = ref({})
+
+// Categoria actual que es mostra
+const categoriaActual = ref(0)
+
+// Carrega les preguntes d'accessibilitat de l'API
 onMounted(async () => {
   try {
-    const response = await fetch(`${API_URL}/accessibility`)
-    const data = await response.json()
+    const response = await fetch(`${URL_API}/accessibility`)
+    const dades = await response.json()
     
-    if (data.success) {
-      accessibilityData.value = data.data
+    if (dades.success) {
+      dadesAccessibilitat.value = dades.data
     }
   } catch (err) {
-    console.error('Error loading accessibility:', err)
+    console.error('Error carregant accessibilitat:', err)
   } finally {
-    isLoading.value = false
+    estaCarregant.value = false
   }
 })
 
-// Computed
+// === PROPIETATS CALCULADES ===
+
+// Converteix les categories en un array
 const categories = computed(() => {
-  if (!accessibilityData.value) return []
-  return Object.values(accessibilityData.value.categories)
+  if (!dadesAccessibilitat.value) return []
+  return Object.values(dadesAccessibilitat.value.categories)
 })
 
-const currentCategoryData = computed(() => {
-  return categories.value[currentCategory.value]
+// Dades de la categoria actual
+const dadesCategoriaActual = computed(() => {
+  return categories.value[categoriaActual.value]
 })
 
-const isLastCategory = computed(() => {
-  return currentCategory.value >= categories.value.length - 1
+// És l'última categoria?
+const esUltimaCategoria = computed(() => {
+  return categoriaActual.value >= categories.value.length - 1
 })
 
-const progress = computed(() => {
+// Percentatge de progrés
+const percentatgeProgres = computed(() => {
   if (categories.value.length === 0) return 0
-  return ((currentCategory.value + 1) / categories.value.length) * 100
+  return ((categoriaActual.value + 1) / categories.value.length) * 100
 })
 
-// Methods
-const toggleAnswer = (questionId) => {
-  answers.value[questionId] = !answers.value[questionId]
+// === FUNCIONS ===
+
+// Activa/desactiva una resposta
+const canviarResposta = (idPregunta) => {
+  respostes.value[idPregunta] = !respostes.value[idPregunta]
 }
 
-const nextCategory = () => {
-  if (isLastCategory.value) {
-    submitAnswers()
+// Anar a la següent categoria
+const categoriaSeguent = () => {
+  if (esUltimaCategoria.value) {
+    enviarRespostes()
   } else {
-    currentCategory.value++
+    categoriaActual.value++
   }
 }
 
-const previousCategory = () => {
-  if (currentCategory.value > 0) {
-    currentCategory.value--
+// Tornar a la categoria anterior
+const categoriaAnterior = () => {
+  if (categoriaActual.value > 0) {
+    categoriaActual.value--
   }
 }
 
-const submitAnswers = async () => {
+// Envia les respostes a l'API
+const enviarRespostes = async () => {
   try {
-    const formattedAnswers = Object.entries(answers.value).map(([questionId, value]) => ({
-      questionId,
-      value
+    // Formatem les respostes per l'API
+    const respostesFormatades = Object.entries(respostes.value).map(([idPregunta, valor]) => ({
+      questionId: idPregunta,
+      value: valor
     }))
 
-    const response = await fetch(`${API_URL}/accessibility/process`, {
+    const response = await fetch(`${URL_API}/accessibility/process`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers: formattedAnswers })
+      body: JSON.stringify({ answers: respostesFormatades })
     })
 
-    const data = await response.json()
+    const dades = await response.json()
 
-    if (data.success) {
+    if (dades.success) {
       emit('complete', {
-        answers: answers.value,
-        adaptations: data.data.adaptations
+        answers: respostes.value,
+        adaptations: dades.data.adaptations
       })
     }
   } catch (err) {
-    console.error('Error processing accessibility:', err)
-    // Continue anyway with the raw answers
-    emit('complete', { answers: answers.value, adaptations: [] })
+    console.error('Error processant accessibilitat:', err)
+    // Continuem igualment amb les respostes crues
+    emit('complete', { answers: respostes.value, adaptations: [] })
   }
 }
 </script>
 
 <template>
-  <div class="accessibility-form animate-slide-up">
-    <!-- Header -->
-    <div class="form-header">
-      <div class="header-icon">♿</div>
+  <div class="formulari-accessibilitat">
+    
+    <!-- Capçalera -->
+    <div class="capsalera-formulari">
+      <div class="icona-capsalera">♿</div>
       <h2>Personalitza la teva experiència</h2>
       <p>Marca les opcions que s'apliquin a tu perquè puguem adaptar la plataforma.</p>
     </div>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+    <!-- Estat de càrrega -->
+    <div v-if="estaCarregant" class="estat-carregant">
+      <div class="spinner"></div>
       <p>Carregant...</p>
     </div>
 
-    <!-- Form Content -->
-    <template v-else-if="accessibilityData && currentCategoryData">
-      <!-- Progress -->
-      <div class="progress-section">
-        <div class="progress-info">
-          <span>{{ currentCategoryData.icon }} {{ currentCategoryData.name }}</span>
-          <span>{{ currentCategory + 1 }} / {{ categories.length }}</span>
+    <!-- Contingut del formulari -->
+    <template v-else-if="dadesAccessibilitat && dadesCategoriaActual">
+      
+      <!-- Barra de progrés -->
+      <div class="seccio-progres">
+        <div class="info-progres">
+          <span>{{ dadesCategoriaActual.icon }} {{ dadesCategoriaActual.name }}</span>
+          <span>{{ categoriaActual + 1 }} / {{ categories.length }}</span>
         </div>
-        <div class="progress-bar">
-          <div class="progress-bar-fill" :style="{ width: `${progress}%` }"></div>
+        <div class="barra-progres">
+          <div class="progres-omplert" :style="{ width: `${percentatgeProgres}%` }"></div>
         </div>
       </div>
 
-      <!-- Questions -->
-      <div class="questions-container card-glass">
+      <!-- Preguntes de la categoria actual -->
+      <div class="contenidor-preguntes card-glass">
         <div 
-          v-for="question in currentCategoryData.questions"
-          :key="question.id"
-          class="question-item"
-          :class="{ active: answers[question.id] }"
-          @click="toggleAnswer(question.id)"
+          v-for="pregunta in dadesCategoriaActual.questions"
+          :key="pregunta.id"
+          class="item-pregunta"
+          :class="{ activa: respostes[pregunta.id] }"
+          @click="canviarResposta(pregunta.id)"
         >
-          <div class="question-checkbox">
-            <span v-if="answers[question.id]">✓</span>
+          <div class="checkbox-pregunta">
+            <span v-if="respostes[pregunta.id]">✓</span>
           </div>
-          <span class="question-text">{{ question.text }}</span>
+          <span class="text-pregunta">{{ pregunta.text }}</span>
         </div>
       </div>
 
-      <!-- Navigation -->
-      <div class="form-navigation">
+      <!-- Navegació -->
+      <div class="navegacio-formulari">
         <button 
-          v-if="currentCategory > 0"
+          v-if="categoriaActual > 0"
           class="btn btn-secondary"
-          @click="previousCategory"
+          @click="categoriaAnterior"
         >
           ← Anterior
         </button>
@@ -151,153 +173,180 @@ const submitAnswers = async () => {
 
         <button 
           class="btn btn-primary"
-          @click="nextCategory"
+          @click="categoriaSeguent"
         >
-          {{ isLastCategory ? 'Finalitzar' : 'Següent →' }}
+          {{ esUltimaCategoria ? 'Finalitzar' : 'Següent →' }}
         </button>
       </div>
 
-      <!-- Skip option -->
-      <button class="skip-btn" @click="emit('skip')">
+      <!-- Opció per saltar -->
+      <button class="boto-saltar" @click="emit('skip')">
         Saltar aquest pas →
       </button>
     </template>
+
   </div>
 </template>
 
 <style scoped>
-.accessibility-form {
+.formulari-accessibilitat {
   max-width: 600px;
   margin: 0 auto;
-  padding: var(--space-lg);
+  padding: 24px;
+  animation: apareixer 0.5s ease-out;
 }
 
-/* Header */
-.form-header {
+@keyframes apareixer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Capçalera */
+.capsalera-formulari {
   text-align: center;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: 64px;
 }
 
-.header-icon {
+.icona-capsalera {
   font-size: 3rem;
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
 }
 
-.form-header h2 {
+.capsalera-formulari h2 {
   font-size: 1.75rem;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
 }
 
-.form-header p {
+.capsalera-formulari p {
   color: var(--gray-400);
 }
 
-/* Loading */
-.loading-state {
+/* Càrrega */
+.estat-carregant {
   text-align: center;
-  padding: var(--space-3xl);
+  padding: 80px;
 }
 
-.loading-spinner {
+.spinner {
   width: 40px;
   height: 40px;
   border: 3px solid var(--gray-700);
   border-top-color: var(--primary-500);
   border-radius: 50%;
-  margin: 0 auto var(--space-md);
-  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+  animation: girar 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes girar {
   to { transform: rotate(360deg); }
 }
 
-/* Progress */
-.progress-section {
-  margin-bottom: var(--space-xl);
+/* Progrés */
+.seccio-progres {
+  margin-bottom: 32px;
 }
 
-.progress-info {
+.info-progres {
   display: flex;
   justify-content: space-between;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
   font-size: 0.875rem;
   color: var(--gray-400);
 }
 
-/* Questions */
-.questions-container {
-  padding: var(--space-md);
-  margin-bottom: var(--space-xl);
+.barra-progres {
+  height: 6px;
+  background: var(--gray-700);
+  border-radius: 50px;
+  overflow: hidden;
 }
 
-.question-item {
+.progres-omplert {
+  height: 100%;
+  background: var(--primary-500);
+  border-radius: 50px;
+  transition: width 0.3s;
+}
+
+/* Preguntes */
+.contenidor-preguntes {
+  padding: 16px;
+  margin-bottom: 32px;
+}
+
+.item-pregunta {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
-  padding: var(--space-lg);
-  margin-bottom: var(--space-sm);
+  gap: 16px;
+  padding: 24px;
+  margin-bottom: 8px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid transparent;
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.question-item:hover {
+.item-pregunta:hover {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.question-item.active {
+.item-pregunta.activa {
   border-color: var(--primary-500);
   background: rgba(0, 136, 255, 0.1);
 }
 
-.question-checkbox {
+.checkbox-pregunta {
   width: 28px;
   height: 28px;
   border: 2px solid var(--gray-600);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.question-item.active .question-checkbox {
+.item-pregunta.activa .checkbox-pregunta {
   background: var(--primary-500);
   border-color: var(--primary-500);
   color: white;
 }
 
-.question-text {
+.text-pregunta {
   color: var(--gray-300);
   font-size: 0.95rem;
 }
 
-/* Navigation */
-.form-navigation {
+/* Navegació */
+.navegacio-formulari {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
+  gap: 16px;
+  margin-bottom: 24px;
 }
 
-/* Skip Button */
-.skip-btn {
+/* Botó saltar */
+.boto-saltar {
   display: block;
   width: 100%;
-  padding: var(--space-md);
+  padding: 16px;
   background: transparent;
   border: none;
   color: var(--gray-500);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: color var(--transition-fast);
+  transition: color 0.2s;
 }
 
-.skip-btn:hover {
+.boto-saltar:hover {
   color: var(--gray-300);
 }
 </style>

@@ -1,3 +1,5 @@
+<!-- ProfileResult.vue - Mostra el resultat del perfil d'aprenentatge -->
+
 <script setup>
 import { ref, computed } from 'vue'
 
@@ -10,190 +12,198 @@ const props = defineProps({
 
 const emit = defineEmits(['restart'])
 
-// Profile color mapping for the new profiles
-const profileColors = {
-  'visualis': { primary: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' },
-  'narra': { primary: '#22c55e', bg: 'rgba(34, 197, 94, 0.15)' },
-  'logika': { primary: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)' },
-  'prax': { primary: '#f97316', bg: 'rgba(249, 115, 22, 0.15)' },
-  'kreo': { primary: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' }
+// Colors per a cada perfil
+const colorsPerPerfil = {
+  'visualis': { principal: '#8b5cf6', fons: 'rgba(139, 92, 246, 0.15)' },
+  'narra': { principal: '#22c55e', fons: 'rgba(34, 197, 94, 0.15)' },
+  'logika': { principal: '#3b82f6', fons: 'rgba(59, 130, 246, 0.15)' },
+  'prax': { principal: '#f97316', fons: 'rgba(249, 115, 22, 0.15)' },
+  'kreo': { principal: '#ec4899', fons: 'rgba(236, 72, 153, 0.15)' }
 }
 
-// Computed
-const primaryProfile = computed(() => props.result.primaryProfileDetails)
-const secondaryProfile = computed(() => props.result.secondaryProfileDetails)
-const analysis = computed(() => props.result.analysis)
-const confidence = computed(() => props.result.confidence)
-const isHybrid = computed(() => props.result.isHybrid)
-const strengths = computed(() => props.result.strengths || primaryProfile.value?.characteristics?.slice(0, 3) || [])
-const recommendations = computed(() => props.result.recommendations || primaryProfile.value?.contentRecommendations?.slice(0, 3) || [])
-const studyTips = computed(() => props.result.studyTips || primaryProfile.value?.learningStrategies?.slice(0, 3) || [])
+// === PROPIETATS CALCULADES ===
+const perfilPrincipal = computed(() => props.result.primaryProfileDetails)
+const perfilSecundari = computed(() => props.result.secondaryProfileDetails)
+const analisi = computed(() => props.result.analysis)
+const confianca = computed(() => props.result.confidence)
+const esHibrid = computed(() => props.result.isHybrid)
+const fortaleses = computed(() => props.result.strengths || perfilPrincipal.value?.characteristics?.slice(0, 3) || [])
+const recomanacions = computed(() => props.result.recommendations || perfilPrincipal.value?.contentRecommendations?.slice(0, 3) || [])
+const consellsEstudi = computed(() => props.result.studyTips || perfilPrincipal.value?.learningStrategies?.slice(0, 3) || [])
 
-const primaryColor = computed(() => {
-  return profileColors[primaryProfile.value?.id]?.primary || '#0088ff'
+const colorPrincipal = computed(() => {
+  return colorsPerPerfil[perfilPrincipal.value?.id]?.principal || '#0088ff'
 })
 
-const primaryBg = computed(() => {
-  return profileColors[primaryProfile.value?.id]?.bg || 'rgba(0, 136, 255, 0.15)'
+const fonsPrincipal = computed(() => {
+  return colorsPerPerfil[perfilPrincipal.value?.id]?.fons || 'rgba(0, 136, 255, 0.15)'
 })
 
-// Active tab for details
-const activeTab = ref('overview')
-const tabs = [
-  { id: 'overview', label: 'Resum', icon: '📋' },
-  { id: 'strengths', label: 'Fortaleses', icon: '💪' },
-  { id: 'recommendations', label: 'Recomanacions', icon: '🎯' },
-  { id: 'tips', label: 'Consells', icon: '💡' }
+// Pestanya activa per mostrar detalls
+const pestanyaActiva = ref('resum')
+const pestanyes = [
+  { id: 'resum', etiqueta: 'Resum', icona: '📋' },
+  { id: 'fortaleses', etiqueta: 'Fortaleses', icona: '💪' },
+  { id: 'recomanacions', etiqueta: 'Recomanacions', icona: '🎯' },
+  { id: 'consells', etiqueta: 'Consells', icona: '💡' }
 ]
 </script>
 
 <template>
-  <div class="profile-result animate-slide-up">
-    <!-- Success Header -->
-    <div class="result-header">
-      <div class="success-icon">🎉</div>
+  <div class="resultat-perfil">
+    
+    <!-- Capçalera d'èxit -->
+    <div class="capsalera-resultat">
+      <div class="icona-exit">🎉</div>
       <h1>El teu Perfil d'Aprenentatge!</h1>
-      <p class="result-subtitle">Basat en les teves respostes, hem identificat el teu estil d'aprenentatge únic</p>
+      <p class="subtitol-resultat">
+        Basat en les teves respostes, hem identificat el teu estil d'aprenentatge únic
+      </p>
     </div>
 
-    <!-- Hybrid Badge -->
-    <div v-if="isHybrid" class="hybrid-badge">
+    <!-- Distintiu si és perfil híbrid -->
+    <div v-if="esHibrid" class="distintiu-hibrid">
       <span>🔀</span>
       <span>Perfil Híbrid: Tens característiques de múltiples perfils</span>
     </div>
 
-    <!-- Main Profile Card -->
+    <!-- Targeta del perfil principal -->
     <div 
-      class="primary-profile-card card-glass"
-      :style="{ '--profile-color': primaryColor, '--profile-bg': primaryBg }"
+      class="targeta-perfil-principal card-glass"
+      :style="{ '--color-perfil': colorPrincipal, '--fons-perfil': fonsPrincipal }"
     >
-      <div class="profile-badge">
-        <span class="profile-emoji">{{ primaryProfile?.emoji }}</span>
+      <div class="distintiu-perfil">
+        <span class="emoji-perfil">{{ perfilPrincipal?.emoji }}</span>
       </div>
       
-      <h2 class="profile-name">{{ primaryProfile?.name }}</h2>
-      <p class="profile-short">{{ primaryProfile?.shortDescription }}</p>
-      <p class="profile-description">{{ primaryProfile?.description }}</p>
+      <h2 class="nom-perfil">{{ perfilPrincipal?.name }}</h2>
+      <p class="descripcio-curta">{{ perfilPrincipal?.shortDescription }}</p>
+      <p class="descripcio-llarga">{{ perfilPrincipal?.description }}</p>
       
-      <div class="confidence-meter">
-        <div class="confidence-label">
+      <!-- Mesurador de confiança -->
+      <div class="mesurador-confianca">
+        <div class="etiqueta-confianca">
           <span>Nivell de confiança</span>
-          <span class="confidence-value">{{ Math.round(confidence) }}%</span>
+          <span class="valor-confianca">{{ Math.round(confianca) }}%</span>
         </div>
-        <div class="confidence-bar">
+        <div class="barra-confianca">
           <div 
-            class="confidence-fill" 
-            :style="{ width: `${confidence}%`, background: primaryColor }"
+            class="confianca-omplerta" 
+            :style="{ width: `${confianca}%`, background: colorPrincipal }"
           ></div>
         </div>
       </div>
     </div>
 
-    <!-- Secondary Profile -->
-    <div class="secondary-profile" v-if="secondaryProfile">
-      <p class="secondary-label">El teu perfil secundari:</p>
-      <div class="secondary-badge" :style="{ borderColor: profileColors[secondaryProfile.id]?.primary }">
-        <span>{{ secondaryProfile.emoji }}</span>
-        <span>{{ secondaryProfile.name }} ({{ secondaryProfile.shortDescription }})</span>
-      </div>
-    </div>
-
-    <!-- AI Analysis -->
-    <div class="analysis-card card" v-if="analysis">
-      <div class="analysis-header">
-        <span class="ai-badge">🤖 Anàlisi</span>
-      </div>
-      <p class="analysis-text">{{ analysis }}</p>
-    </div>
-
-    <!-- Tabs Navigation -->
-    <div class="tabs-nav">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        class="tab-btn"
-        :class="{ active: activeTab === tab.id }"
-        @click="activeTab = tab.id"
+    <!-- Perfil secundari -->
+    <div class="perfil-secundari" v-if="perfilSecundari">
+      <p class="etiqueta-secundari">El teu perfil secundari:</p>
+      <div 
+        class="distintiu-secundari" 
+        :style="{ borderColor: colorsPerPerfil[perfilSecundari.id]?.principal }"
       >
-        <span class="tab-icon">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
+        <span>{{ perfilSecundari.emoji }}</span>
+        <span>{{ perfilSecundari.name }} ({{ perfilSecundari.shortDescription }})</span>
+      </div>
+    </div>
+
+    <!-- Anàlisi de la IA -->
+    <div class="targeta-analisi card" v-if="analisi">
+      <div class="capsalera-analisi">
+        <span class="distintiu-ia">🤖 Anàlisi</span>
+      </div>
+      <p class="text-analisi">{{ analisi }}</p>
+    </div>
+
+    <!-- Navegació de pestanyes -->
+    <div class="navegacio-pestanyes">
+      <button
+        v-for="pestanya in pestanyes"
+        :key="pestanya.id"
+        class="boto-pestanya"
+        :class="{ activa: pestanyaActiva === pestanya.id }"
+        @click="pestanyaActiva = pestanya.id"
+      >
+        <span class="icona-pestanya">{{ pestanya.icona }}</span>
+        <span class="etiqueta-pestanya">{{ pestanya.etiqueta }}</span>
       </button>
     </div>
 
-    <!-- Tab Content -->
-    <div class="tab-content card">
-      <!-- Overview Tab -->
-      <div v-if="activeTab === 'overview'" class="tab-panel">
+    <!-- Contingut de les pestanyes -->
+    <div class="contingut-pestanya card">
+      
+      <!-- Resum -->
+      <div v-if="pestanyaActiva === 'resum'" class="panel-pestanya">
         <h3>Característiques del teu perfil</h3>
-        <ul class="characteristics-list">
-          <li v-for="(char, index) in primaryProfile?.characteristics" :key="index">
-            <span class="check-icon" :style="{ color: primaryColor }">✓</span>
-            {{ char }}
+        <ul class="llista-caracteristiques">
+          <li v-for="(caracteristica, index) in perfilPrincipal?.characteristics" :key="index">
+            <span class="icona-check" :style="{ color: colorPrincipal }">✓</span>
+            {{ caracteristica }}
           </li>
         </ul>
 
         <h3 class="mt-xl">Contingut recomanat</h3>
-        <div class="content-tags">
+        <div class="etiquetes-contingut">
           <span 
-            v-for="(content, index) in primaryProfile?.contentRecommendations" 
+            v-for="(contingut, index) in perfilPrincipal?.contentRecommendations" 
             :key="index"
-            class="content-tag"
+            class="etiqueta-contingut"
           >
-            {{ content }}
+            {{ contingut }}
           </span>
         </div>
       </div>
 
-      <!-- Strengths Tab -->
-      <div v-if="activeTab === 'strengths'" class="tab-panel">
+      <!-- Fortaleses -->
+      <div v-if="pestanyaActiva === 'fortaleses'" class="panel-pestanya">
         <h3>Les teves fortaleses d'aprenentatge</h3>
-        <div class="strengths-grid" v-if="strengths.length">
-          <div v-for="(strength, index) in strengths" :key="index" class="strength-card">
-            <span class="strength-number" :style="{ background: primaryColor }">{{ index + 1 }}</span>
-            <p>{{ strength }}</p>
+        <div class="graella-fortaleses" v-if="fortaleses.length">
+          <div v-for="(fortalesa, index) in fortaleses" :key="index" class="targeta-fortalesa">
+            <span class="numero-fortalesa" :style="{ background: colorPrincipal }">{{ index + 1 }}</span>
+            <p>{{ fortalesa }}</p>
           </div>
         </div>
-        <p v-else class="empty-message">
+        <p v-else class="missatge-buit">
           Les fortaleses específiques es generaran amb l'API d'IA.
         </p>
       </div>
 
-      <!-- Recommendations Tab -->
-      <div v-if="activeTab === 'recommendations'" class="tab-panel">
+      <!-- Recomanacions -->
+      <div v-if="pestanyaActiva === 'recomanacions'" class="panel-pestanya">
         <h3>Recomanacions personalitzades</h3>
-        <div class="recommendations-list" v-if="recommendations.length">
-          <div v-for="(rec, index) in recommendations" :key="index" class="recommendation-item">
-            <span class="rec-icon">🎯</span>
+        <div class="llista-recomanacions" v-if="recomanacions.length">
+          <div v-for="(rec, index) in recomanacions" :key="index" class="item-recomanacio">
+            <span class="icona-rec">🎯</span>
             <p>{{ rec }}</p>
           </div>
         </div>
-        <p v-else class="empty-message">
+        <p v-else class="missatge-buit">
           Les recomanacions personalitzades es generaran amb l'API d'IA.
         </p>
       </div>
 
-      <!-- Study Tips Tab -->
-      <div v-if="activeTab === 'tips'" class="tab-panel">
+      <!-- Consells -->
+      <div v-if="pestanyaActiva === 'consells'" class="panel-pestanya">
         <h3>Consells d'estudi</h3>
-        <div class="tips-list" v-if="studyTips.length">
-          <div v-for="(tip, index) in studyTips" :key="index" class="tip-item">
-            <span class="tip-icon">💡</span>
-            <p>{{ tip }}</p>
+        <div class="llista-consells" v-if="consellsEstudi.length">
+          <div v-for="(consell, index) in consellsEstudi" :key="index" class="item-consell">
+            <span class="icona-consell">💡</span>
+            <p>{{ consell }}</p>
           </div>
         </div>
-        <div v-else class="default-tips">
-          <div class="tip-item">
-            <span class="tip-icon">💡</span>
-            <p v-if="primaryProfile?.id === 'visualis'">
+        <div v-else class="consells-per-defecte">
+          <div class="item-consell">
+            <span class="icona-consell">💡</span>
+            <p v-if="perfilPrincipal?.id === 'visualis'">
               Usa mapes mentals i diagrames per organitzar la informació
             </p>
-            <p v-else-if="primaryProfile?.id === 'narra'">
+            <p v-else-if="perfilPrincipal?.id === 'narra'">
               Connecta els conceptes nous amb experiències i històries reals
             </p>
-            <p v-else-if="primaryProfile?.id === 'logika'">
+            <p v-else-if="perfilPrincipal?.id === 'logika'">
               Crea llistes i taules comparatives per estructurar la informació
             </p>
-            <p v-else-if="primaryProfile?.id === 'prax'">
+            <p v-else-if="perfilPrincipal?.id === 'prax'">
               Divideix l'estudi en sessions curtes amb pràctica activa
             </p>
             <p v-else>
@@ -204,300 +214,326 @@ const tabs = [
       </div>
     </div>
 
-    <!-- Actions -->
-    <div class="result-actions">
+    <!-- Accions -->
+    <div class="accions-resultat">
       <button class="btn btn-primary btn-lg" @click="emit('restart')">
         <span>Fer una altra avaluació</span>
       </button>
     </div>
 
-    <!-- Share Section -->
-    <div class="share-section">
+    <!-- Secció per compartir -->
+    <div class="seccio-compartir">
       <p>Comparteix el teu resultat</p>
-      <div class="share-badges">
-        <span class="share-badge" :style="{ borderColor: primaryColor, color: primaryColor }">
-          {{ primaryProfile?.emoji }} {{ primaryProfile?.name }}
+      <div class="distintius-compartir">
+        <span 
+          class="distintiu-compartir" 
+          :style="{ borderColor: colorPrincipal, color: colorPrincipal }"
+        >
+          {{ perfilPrincipal?.emoji }} {{ perfilPrincipal?.name }}
         </span>
       </div>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-.profile-result {
+.resultat-perfil {
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
+  animation: apareixer 0.5s ease-out;
 }
 
-/* Header */
-.result-header {
+@keyframes apareixer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Capçalera */
+.capsalera-resultat {
   text-align: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: 32px;
 }
 
-.success-icon {
+.icona-exit {
   font-size: 4rem;
-  margin-bottom: var(--space-lg);
-  animation: float 2s ease-in-out infinite;
+  margin-bottom: 24px;
+  animation: flotar 2s ease-in-out infinite;
 }
 
-.result-header h1 {
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.capsalera-resultat h1 {
   font-size: 2.5rem;
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
 }
 
-.result-subtitle {
+.subtitol-resultat {
   font-size: 1.125rem;
   color: var(--gray-400);
 }
 
-/* Hybrid Badge */
-.hybrid-badge {
+/* Distintiu híbrid */
+.distintiu-hibrid {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  gap: 12px;
+  padding: 12px 24px;
   background: rgba(139, 92, 246, 0.15);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: var(--radius-full);
-  margin-bottom: var(--space-xl);
+  border-radius: 50px;
+  margin-bottom: 32px;
   font-size: 0.875rem;
   color: var(--accent-purple);
 }
 
-/* Primary Profile Card */
-.primary-profile-card {
+/* Targeta del perfil principal */
+.targeta-perfil-principal {
   text-align: center;
-  padding: var(--space-2xl);
-  margin-bottom: var(--space-xl);
-  border: 2px solid var(--profile-color);
-  background: var(--profile-bg) !important;
+  padding: 64px;
+  margin-bottom: 32px;
+  border: 2px solid var(--color-perfil);
+  background: var(--fons-perfil) !important;
 }
 
-.profile-badge {
+.distintiu-perfil {
   width: 100px;
   height: 100px;
-  margin: 0 auto var(--space-lg);
+  margin: 0 auto 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--profile-bg);
-  border: 3px solid var(--profile-color);
+  background: var(--fons-perfil);
+  border: 3px solid var(--color-perfil);
   border-radius: 50%;
-  animation: pulse 2s ease-in-out infinite;
+  animation: palpitar 2s ease-in-out infinite;
 }
 
-.profile-emoji {
+@keyframes palpitar {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.emoji-perfil {
   font-size: 3rem;
 }
 
-.profile-name {
+.nom-perfil {
   font-size: 2rem;
-  margin-bottom: var(--space-xs);
-  color: var(--profile-color);
+  margin-bottom: 8px;
+  color: var(--color-perfil);
 }
 
-.profile-short {
+.descripcio-curta {
   font-size: 1rem;
   color: var(--gray-400);
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 2px;
 }
 
-.profile-description {
+.descripcio-llarga {
   font-size: 1.125rem;
   color: var(--gray-300);
   max-width: 500px;
-  margin: 0 auto var(--space-xl);
+  margin: 0 auto 32px;
 }
 
-/* Confidence Meter */
-.confidence-meter {
+/* Mesurador de confiança */
+.mesurador-confianca {
   max-width: 300px;
   margin: 0 auto;
 }
 
-.confidence-label {
+.etiqueta-confianca {
   display: flex;
   justify-content: space-between;
   font-size: 0.875rem;
   color: var(--gray-400);
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
 }
 
-.confidence-value {
+.valor-confianca {
   font-weight: 600;
-  color: var(--profile-color);
+  color: var(--color-perfil);
 }
 
-.confidence-bar {
+.barra-confianca {
   height: 8px;
   background: var(--gray-700);
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   overflow: hidden;
 }
 
-.confidence-fill {
+.confianca-omplerta {
   height: 100%;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   transition: width 1s ease-out;
 }
 
-/* Secondary Profile */
-.secondary-profile {
+/* Perfil secundari */
+.perfil-secundari {
   text-align: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: 32px;
 }
 
-.secondary-label {
+.etiqueta-secundari {
   font-size: 0.875rem;
   color: var(--gray-500);
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
 }
 
-.secondary-badge {
+.distintiu-secundari {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  gap: 12px;
+  padding: 12px 24px;
   background: rgba(255, 255, 255, 0.05);
   border: 2px solid;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 0.9rem;
   color: var(--gray-300);
 }
 
-/* Analysis Card */
-.analysis-card {
-  margin-bottom: var(--space-xl);
+/* Targeta d'anàlisi */
+.targeta-analisi {
+  margin-bottom: 32px;
 }
 
-.analysis-header {
-  margin-bottom: var(--space-md);
+.capsalera-analisi {
+  margin-bottom: 16px;
 }
 
-.ai-badge {
+.distintiu-ia {
   display: inline-block;
-  padding: var(--space-xs) var(--space-md);
+  padding: 8px 16px;
   background: linear-gradient(135deg, var(--primary-500), var(--accent-purple));
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 0.75rem;
   font-weight: 600;
   color: white;
 }
 
-.analysis-text {
+.text-analisi {
   font-size: 1rem;
   line-height: 1.7;
   color: var(--gray-300);
 }
 
-/* Tabs */
-.tabs-nav {
+/* Pestanyes */
+.navegacio-pestanyes {
   display: flex;
-  gap: var(--space-sm);
-  margin-bottom: var(--space-lg);
+  gap: 12px;
+  margin-bottom: 24px;
   overflow-x: auto;
-  padding-bottom: var(--space-sm);
+  padding-bottom: 8px;
 }
 
-.tab-btn {
+.boto-pestanya {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  gap: 8px;
+  padding: 12px 24px;
   background: transparent;
   border: 1px solid var(--gray-700);
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   color: var(--gray-400);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
   white-space: nowrap;
 }
 
-.tab-btn:hover {
+.boto-pestanya:hover {
   border-color: var(--gray-500);
   color: white;
 }
 
-.tab-btn.active {
+.boto-pestanya.activa {
   background: var(--primary-500);
   border-color: var(--primary-500);
   color: white;
 }
 
-.tab-icon {
+.icona-pestanya {
   font-size: 1rem;
 }
 
-/* Tab Content */
-.tab-content {
-  margin-bottom: var(--space-xl);
+/* Contingut pestanyes */
+.contingut-pestanya {
+  margin-bottom: 32px;
 }
 
-.tab-panel h3 {
+.panel-pestanya h3 {
   font-size: 1.125rem;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
   color: white;
 }
 
-/* Characteristics List */
-.characteristics-list {
+/* Llista de característiques */
+.llista-caracteristiques {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.characteristics-list li {
+.llista-caracteristiques li {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-md);
+  gap: 16px;
   color: var(--gray-300);
 }
 
-.check-icon {
+.icona-check {
   font-weight: bold;
   flex-shrink: 0;
 }
 
-/* Content Tags */
-.content-tags {
+/* Etiquetes de contingut */
+.etiquetes-contingut {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
+  gap: 12px;
 }
 
-.content-tag {
-  padding: var(--space-sm) var(--space-md);
+.etiqueta-contingut {
+  padding: 12px 16px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   font-size: 0.875rem;
   color: var(--gray-300);
 }
 
-/* Strengths Grid */
-.strengths-grid {
+/* Graella de fortaleses */
+.graella-fortaleses {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.strength-card {
+.targeta-fortalesa {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-lg);
+  gap: 16px;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
 }
 
-.strength-number {
+.numero-fortalesa {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -510,124 +546,113 @@ const tabs = [
   flex-shrink: 0;
 }
 
-.strength-card p {
+.targeta-fortalesa p {
   color: var(--gray-300);
   font-size: 0.9rem;
 }
 
-/* Recommendations & Tips */
-.recommendations-list,
-.tips-list,
-.default-tips {
+/* Llistes */
+.llista-recomanacions,
+.llista-consells,
+.consells-per-defecte {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.recommendation-item,
-.tip-item {
+.item-recomanacio,
+.item-consell {
   display: flex;
   align-items: flex-start;
-  gap: var(--space-md);
-  padding: var(--space-lg);
+  gap: 16px;
+  padding: 24px;
   background: rgba(255, 255, 255, 0.03);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
 }
 
-.rec-icon,
-.tip-icon {
+.icona-rec,
+.icona-consell {
   font-size: 1.25rem;
   flex-shrink: 0;
 }
 
-.recommendation-item p,
-.tip-item p {
+.item-recomanacio p,
+.item-consell p {
   color: var(--gray-300);
   font-size: 0.9rem;
   line-height: 1.6;
 }
 
-.empty-message {
+.missatge-buit {
   color: var(--gray-500);
   font-style: italic;
   text-align: center;
-  padding: var(--space-xl);
+  padding: 32px;
 }
 
-/* Actions */
-.result-actions {
+/* Accions */
+.accions-resultat {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--space-xl);
+  margin-bottom: 32px;
 }
 
-/* Share Section */
-.share-section {
+/* Compartir */
+.seccio-compartir {
   text-align: center;
-  padding-top: var(--space-xl);
+  padding-top: 32px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.share-section p {
+.seccio-compartir p {
   font-size: 0.875rem;
   color: var(--gray-500);
-  margin-bottom: var(--space-md);
+  margin-bottom: 16px;
 }
 
-.share-badges {
+.distintius-compartir {
   display: flex;
   justify-content: center;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.share-badge {
-  padding: var(--space-sm) var(--space-lg);
+.distintiu-compartir {
+  padding: 12px 24px;
   border: 2px solid;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 0.9rem;
   font-weight: 600;
 }
 
-/* Animations */
-@keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-  .result-header h1 {
+  .capsalera-resultat h1 {
     font-size: 1.75rem;
   }
 
-  .profile-badge {
+  .distintiu-perfil {
     width: 80px;
     height: 80px;
   }
 
-  .profile-emoji {
+  .emoji-perfil {
     font-size: 2.5rem;
   }
 
-  .profile-name {
+  .nom-perfil {
     font-size: 1.5rem;
   }
 
-  .tabs-nav {
+  .navegacio-pestanyes {
     justify-content: flex-start;
   }
 
-  .tab-label {
+  .etiqueta-pestanya {
     display: none;
   }
 
-  .tab-btn {
-    padding: var(--space-sm) var(--space-md);
+  .boto-pestanya {
+    padding: 12px 16px;
   }
 }
 </style>

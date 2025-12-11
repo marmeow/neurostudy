@@ -1,253 +1,290 @@
+<!-- App.vue - Component principal de l'aplicació -->
+
 <script setup>
-import { ref, computed, onMounted } from 'vue' // ¡Importamos onMounted!
+import { ref, onMounted } from 'vue'
 import WelcomeScreen from './components/WelcomeScreen.vue'
 import AccessibilityForm from './components/AccessibilityForm.vue'
 import Questionnaire from './components/Questionnaire.vue'
 import ProfileResult from './components/ProfileResult.vue'
 import Chat from './components/Chat.vue'
 
-// App state
-const currentView = ref('welcome') // 'welcome', 'accessibility', 'questionnaire', 'result'
-const profileResult = ref(null)
-const isLoading = ref(false)
-const error = ref(null)
-const showChat = ref(false)
+// === ESTAT DE L'APLICACIÓ ===
+// Controla quina pantalla es mostra: 'welcome', 'accessibility', 'questionnaire', 'result'
+const pantallaActual = ref('welcome')
 
-// Accessibility state
-const accessibilitySettings = ref({})
-const activeAdaptations = ref([])
+// Guarda el resultat del perfil de l'usuari
+const resultatPerfil = ref(null)
 
-// API base URL
-const API_URL = 'http://localhost:3000/api'
+// Controla si està carregant
+const estaCarregant = ref(false)
 
-// ============================================
-// LÓGICA DE APLICACIÓN DE ADAPTACIONES GLOBALES
-// ============================================
+// Guarda missatges d'error
+const missatgeError = ref(null)
+
+// Controla si el xat està obert
+const xatObert = ref(false)
+
+// === CONFIGURACIÓ D'ACCESSIBILITAT ===
+// Guarda les respostes del formulari d'accessibilitat
+const configuracioAccessibilitat = ref({})
+
+// Guarda les adaptacions actives (text gran, alt contrast, etc.)
+const adaptacionsActives = ref([])
+
+// URL de l'API del backend
+const URL_API = 'http://localhost:3000/api'
+
+// === FUNCIONS D'ACCESSIBILITAT ===
 
 /**
- * Aplica las clases CSS y variables al elemento raíz del documento (<html>)
- * para cambiar el tema de la web.
- * @param {Array} adaptations - Lista de objetos de adaptación activa.
+ * Aplica les adaptacions d'accessibilitat a tota la pàgina
+ * @param {Array} adaptacions - Llista d'adaptacions a aplicar
  */
-const applyGlobalStyles = (adaptations) => {
-  // Usamos el elemento <html> para aplicar los cambios globales
-  const rootElement = document.documentElement;
+const aplicarEstilsGlobals = (adaptacions) => {
+  const elementHTML = document.documentElement
 
-  // --- 1. Limpieza ---
-  // Elimina las clases de accesibilidad previas
-  const classesToRemove = Array.from(rootElement.classList).filter(cls =>
+  // Netegem les classes antigues d'accessibilitat
+  const classesAntigues = Array.from(elementHTML.classList).filter(cls =>
     cls.startsWith('accessibility-')
-  );
-  classesToRemove.forEach(cls => rootElement.classList.remove(cls));
+  )
+  classesAntigues.forEach(cls => elementHTML.classList.remove(cls))
 
-  // Limpieza de estilos de variables CSS inyectados
-  rootElement.style.cssText = '';
+  // Netegem els estils anteriors
+  elementHTML.style.cssText = ''
 
-  // --- 2. Aplicación ---
-  adaptations.forEach(adaptation => {
-    // A) Aplicar Clases CSS (Tu CSS global se encarga de estos)
-    if (adaptation.cssClass) {
-      rootElement.classList.add(adaptation.cssClass);
+  // Apliquem cada adaptació
+  adaptacions.forEach(adaptacio => {
+    // Afegim la classe CSS si n'hi ha
+    if (adaptacio.cssClass) {
+      elementHTML.classList.add(adaptacio.cssClass)
     }
 
-    // B) Aplicar Variables CSS (Para sobrescribir colores, tamaños de fuente, etc.)
-    if (adaptation.cssVars) {
-      for (const [variable, value] of Object.entries(adaptation.cssVars)) {
-        rootElement.style.setProperty(variable, value);
+    // Apliquem variables CSS (colors, mides, etc.)
+    if (adaptacio.cssVars) {
+      for (const [variable, valor] of Object.entries(adaptacio.cssVars)) {
+        elementHTML.style.setProperty(variable, valor)
       }
     }
+  })
+}
 
-    // C) Manejar Features (Ej: TextToSpeech, subtítulos)
-    if (adaptation.feature) {
-      // Aquí podrías activar funcionalidades complejas (ej. iniciar un servicio de lector de pantalla)
-      // console.log(`Feature activada: ${adaptation.feature}`);
-    }
-  });
-};
-
-// Se ejecuta al cargar el componente
+// Quan es carrega la pàgina, recuperem les adaptacions guardades
 onMounted(() => {
-  const savedAdaptations = localStorage.getItem('activeAdaptations');
-  if (savedAdaptations) {
+  const adaptacionsGuardades = localStorage.getItem('activeAdaptations')
+  if (adaptacionsGuardades) {
     try {
-      const adaptations = JSON.parse(savedAdaptations);
-      activeAdaptations.value = adaptations; // Actualiza el estado reactivo
-      applyGlobalStyles(adaptations); // Aplica los estilos inmediatamente
+      const adaptacions = JSON.parse(adaptacionsGuardades)
+      adaptacionsActives.value = adaptacions
+      aplicarEstilsGlobals(adaptacions)
     } catch (e) {
-      console.error('Error loading saved adaptations:', e);
-      localStorage.removeItem('activeAdaptations');
+      console.error('Error carregant adaptacions:', e)
+      localStorage.removeItem('activeAdaptations')
     }
   }
-});
+})
 
-// Navigation handlers
-const startAssessment = () => {
-  currentView.value = 'accessibility'
+// === NAVEGACIÓ ENTRE PANTALLES ===
+
+// Inicia l'avaluació (va a la pantalla d'accessibilitat)
+const iniciarAvaluacio = () => {
+  pantallaActual.value = 'accessibility'
 }
 
-const handleAccessibilityComplete = (data) => {
-  accessibilitySettings.value = data.answers || {}
-  activeAdaptations.value = data.adaptations || []
+// Quan es completa el formulari d'accessibilitat
+const accessibilitatCompleta = (dades) => {
+  configuracioAccessibilitat.value = dades.answers || {}
+  adaptacionsActives.value = dades.adaptations || []
 
-  // ¡CAMBIO CLAVE 1: Aplicar estilos y guardar persistencia!
-  applyGlobalStyles(activeAdaptations.value);
-  localStorage.setItem('activeAdaptations', JSON.stringify(activeAdaptations.value));
+  // Apliquem i guardem les adaptacions
+  aplicarEstilsGlobals(adaptacionsActives.value)
+  localStorage.setItem('activeAdaptations', JSON.stringify(adaptacionsActives.value))
 
-  currentView.value = 'questionnaire'
+  pantallaActual.value = 'questionnaire'
 }
 
-const handleAccessibilitySkip = () => {
-  activeAdaptations.value = [];
-
-  // ¡CAMBIO CLAVE 2: Limpiar estilos si se salta el paso!
-  applyGlobalStyles([]);
-  localStorage.removeItem('activeAdaptations');
-
-  currentView.value = 'questionnaire'
+// Si l'usuari salta el pas d'accessibilitat
+const saltarAccessibilitat = () => {
+  adaptacionsActives.value = []
+  aplicarEstilsGlobals([])
+  localStorage.removeItem('activeAdaptations')
+  pantallaActual.value = 'questionnaire'
 }
 
-const handleQuestionnaireComplete = async (answers) => {
-  isLoading.value = true
-  error.value = null
+// Quan es completa el qüestionari
+const questionariComplet = async (respostes) => {
+  estaCarregant.value = true
+  missatgeError.value = null
 
   try {
-    const response = await fetch(`${API_URL}/analyze`, {
+    // Enviem les respostes a l'API
+    const response = await fetch(`${URL_API}/analyze`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ answers })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: respostes })
     })
 
-    const data = await response.json()
+    const dades = await response.json()
 
-    if (data.success) {
-      profileResult.value = data.data
-      currentView.value = 'result'
+    if (dades.success) {
+      resultatPerfil.value = dades.data
+      pantallaActual.value = 'result'
     } else {
-      error.value = data.error || 'Error al analitzar les respostes'
+      missatgeError.value = dades.error || 'Error al analitzar les respostes'
     }
   } catch (err) {
     console.error('Error:', err)
-    error.value = 'Error de connexió amb el servidor'
+    missatgeError.value = 'Error de connexió amb el servidor'
   } finally {
-    isLoading.value = false
+    estaCarregant.value = false
   }
 }
 
-const restartAssessment = () => {
-  profileResult.value = null
-  showChat.value = false
-  currentView.value = 'welcome'
+// Reinicia l'avaluació
+const reiniciarAvaluacio = () => {
+  resultatPerfil.value = null
+  xatObert.value = false
+  pantallaActual.value = 'welcome'
 }
 
-const openChat = () => {
-  showChat.value = true
+// Obre/tanca el xat
+const obrirXat = () => {
+  xatObert.value = true
 }
 
-const closeChat = () => {
-  showChat.value = false
-}
-
-// Text-to-Speech functionality (si quieres que funcione, debe leer el estado accessibilitySettings)
-const speakText = (text) => {
-  // Asumiendo que 'textToSpeech' es el ID de la adaptación o una propiedad de accessibilitySettings
-  const isTtsActive = activeAdaptations.value.some(a => a.id === 'textToSpeech');
-
-  if ('speechSynthesis' in window && isTtsActive) {
-    const utterance = new SpeechSynthesisUtterance(text)
-    utterance.lang = 'ca-ES' // Catalan
-    window.speechSynthesis.speak(utterance)
-  }
+const tancarXat = () => {
+  xatObert.value = false
 }
 </script>
 
 <template>
   <div class="app">
-    <!-- Skip to content link for accessibility -->
+    <!-- Enllaç per saltar al contingut (accessibilitat) -->
     <a href="#main-content" class="skip-link">Saltar contingut principal</a>
-    <!-- Background decorations -->
-    <div class="bg-decoration" aria-hidden="true">
-      <div class="bg-circle bg-circle-1"></div>
-      <div class="bg-circle bg-circle-2"></div>
-      <div class="bg-circle bg-circle-3"></div>
+
+    <!-- Decoracions de fons -->
+    <div class="decoracio-fons" aria-hidden="true">
+      <div class="cercle cercle-1"></div>
+      <div class="cercle cercle-2"></div>
+      <div class="cercle cercle-3"></div>
     </div>
 
-    <!-- Header -->
-    <header class="header">
+    <!-- Capçalera -->
+    <header class="capsalera">
       <div class="container">
-        <div class="header-content">
-          <div class="logo" @click="restartAssessment" role="button" tabindex="0" @keydown.enter="restartAssessment">
+        <div class="contingut-capsalera">
+          <!-- Logo -->
+          <div 
+            class="logo" 
+            @click="reiniciarAvaluacio" 
+            role="button" 
+            tabindex="0" 
+            @keydown.enter="reiniciarAvaluacio"
+          >
             <img src="/logo.png" alt="logo">
           </div>
 
-          <!-- Accessibility Quick Toggle -->
-          <div class="header-actions">
-            <button v-if="activeAdaptations.length > 0" class="accessibility-indicator" title="Accessibilitat activa">
-              ♿ {{ activeAdaptations.length }}
+          <!-- Accions de la capçalera -->
+          <div class="accions-capsalera">
+            <!-- Indicador d'accessibilitat activa -->
+            <button 
+              v-if="adaptacionsActives.length > 0" 
+              class="indicador-accessibilitat" 
+              title="Accessibilitat activa"
+            >
+              ♿ {{ adaptacionsActives.length }}
             </button>
-            <p class="tagline">Tecnologia amb empatia</p>
+            <p class="eslogan">Tecnologia amb empatia</p>
           </div>
         </div>
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="main-content" id="main-content">
+    <!-- Contingut principal -->
+    <main class="contingut-principal" id="main-content">
       <div class="container container-sm">
-        <!-- Loading State -->
-        <div v-if="isLoading" class="loading-state" role="status" aria-live="polite">
-          <div class="loading-spinner" aria-hidden="true"></div>
+        
+        <!-- Estat de càrrega -->
+        <div v-if="estaCarregant" class="estat-carregant" role="status" aria-live="polite">
+          <div class="spinner" aria-hidden="true"></div>
           <p>Analitzant el teu perfil d'aprenentatge...</p>
-          <p class="loading-subtext">La nostra IA està processant les teves respostes</p>
+          <p class="text-petit">La nostra IA està processant les teves respostes</p>
         </div>
 
-        <!-- Error State -->
-        <div v-else-if="error" class="error-state card" role="alert">
-          <span class="error-icon" aria-hidden="true">⚠️</span>
+        <!-- Estat d'error -->
+        <div v-else-if="missatgeError" class="estat-error card" role="alert">
+          <span class="icona-error" aria-hidden="true">⚠️</span>
           <h3>S'ha produït un error</h3>
-          <p>{{ error }}</p>
-          <button class="btn btn-primary mt-lg" @click="error = null; currentView = 'questionnaire'">
+          <p>{{ missatgeError }}</p>
+          <button 
+            class="btn btn-primary mt-lg" 
+            @click="missatgeError = null; pantallaActual = 'questionnaire'"
+          >
             Tornar a intentar
           </button>
         </div>
 
-        <!-- Dynamic Views -->
+        <!-- Pantalles (amb transició) -->
         <Transition name="fade" mode="out-in">
-          <WelcomeScreen v-if="currentView === 'welcome' && !isLoading && !error" :key="'welcome'"
-            @start="startAssessment" />
+          <!-- Pantalla de benvinguda -->
+          <WelcomeScreen 
+            v-if="pantallaActual === 'welcome' && !estaCarregant && !missatgeError" 
+            :key="'welcome'"
+            @start="iniciarAvaluacio" 
+          />
 
-          <AccessibilityForm v-else-if="currentView === 'accessibility' && !isLoading && !error" :key="'accessibility'"
-            @complete="handleAccessibilityComplete" @skip="handleAccessibilitySkip" />
+          <!-- Formulari d'accessibilitat -->
+          <AccessibilityForm 
+            v-else-if="pantallaActual === 'accessibility' && !estaCarregant && !missatgeError" 
+            :key="'accessibility'"
+            @complete="accessibilitatCompleta" 
+            @skip="saltarAccessibilitat" 
+          />
 
-          <Questionnaire v-else-if="currentView === 'questionnaire' && !isLoading && !error" :key="'questionnaire'"
-            @complete="handleQuestionnaireComplete" @back="currentView = 'accessibility'" />
+          <!-- Qüestionari -->
+          <Questionnaire 
+            v-else-if="pantallaActual === 'questionnaire' && !estaCarregant && !missatgeError" 
+            :key="'questionnaire'"
+            @complete="questionariComplet" 
+            @back="pantallaActual = 'accessibility'" 
+          />
 
-          <div v-else-if="currentView === 'result' && !isLoading && !error" :key="'result'" class="result-container">
-            <ProfileResult :result="profileResult" @restart="restartAssessment" />
+          <!-- Resultat del perfil -->
+          <div 
+            v-else-if="pantallaActual === 'result' && !estaCarregant && !missatgeError" 
+            :key="'result'" 
+            class="contenidor-resultat"
+          >
+            <ProfileResult 
+              :result="resultatPerfil" 
+              @restart="reiniciarAvaluacio" 
+            />
 
-            <!-- Chat Button -->
-            <div class="chat-button-container" v-if="!showChat">
-              <button class="chat-fab" @click="openChat" aria-label="Obrir xat amb IA">
-                <span class="chat-fab-icon">💬</span>
-                <span class="chat-fab-text">Xat amb IA</span>
+            <!-- Botó flotant del xat -->
+            <div class="contenidor-boto-xat" v-if="!xatObert">
+              <button class="boto-xat-flotant" @click="obrirXat" aria-label="Obrir xat amb IA">
+                <span class="icona-xat">💬</span>
+                <span class="text-xat">Xat amb IA</span>
               </button>
             </div>
           </div>
         </Transition>
       </div>
 
-      <!-- Chat Panel -->
+      <!-- Panel del xat -->
       <Transition name="slide-up">
-        <div v-if="showChat && profileResult" class="chat-panel">
-          <Chat :profileId="profileResult.primaryProfile" :profileDetails="profileResult.primaryProfileDetails"
-            :accessibilitySettings="accessibilitySettings" @close="closeChat" />
+        <div v-if="xatObert && resultatPerfil" class="panel-xat">
+          <Chat 
+            :profileId="resultatPerfil.primaryProfile" 
+            :profileDetails="resultatPerfil.primaryProfileDetails"
+            :accessibilitySettings="configuracioAccessibilitat" 
+            @close="tancarXat" 
+          />
         </div>
       </Transition>
     </main>
 
-    <!-- Footer -->
-    <footer class="footer">
+    <!-- Peu de pàgina -->
+    <footer class="peu-pagina">
       <div class="container">
         <p>© 2024 NeuroStudy AI - Tecnologia amb empatia</p>
       </div>
@@ -264,8 +301,8 @@ const speakText = (text) => {
   overflow-x: hidden;
 }
 
-/* Background Decorations */
-.bg-decoration {
+/* Decoracions de fons */
+.decoracio-fons {
   position: fixed;
   top: 0;
   left: 0;
@@ -276,214 +313,218 @@ const speakText = (text) => {
   overflow: hidden;
 }
 
-.bg-circle {
+.cercle {
   position: absolute;
   border-radius: 50%;
   filter: blur(80px);
   opacity: 0.3;
 }
 
-.bg-circle-1 {
+.cercle-1 {
   width: 600px;
   height: 600px;
   background: var(--primary-500);
   top: -200px;
   right: -200px;
-  animation: float 8s ease-in-out infinite;
+  animation: flotar 8s ease-in-out infinite;
 }
 
-.bg-circle-2 {
+.cercle-2 {
   width: 400px;
   height: 400px;
   background: var(--accent-purple);
   bottom: -100px;
   left: -100px;
-  animation: float 10s ease-in-out infinite reverse;
+  animation: flotar 10s ease-in-out infinite reverse;
 }
 
-.bg-circle-3 {
+.cercle-3 {
   width: 300px;
   height: 300px;
   background: var(--accent-teal);
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  animation: pulse 5s ease-in-out infinite;
+  animation: palpitar 5s ease-in-out infinite;
 }
 
-/* Header */
-.header {
+@keyframes flotar {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-20px); }
+}
+
+@keyframes palpitar {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.5; }
+}
+
+/* Capçalera */
+.capsalera {
   position: relative;
   z-index: 10;
-  padding: var(--space-lg) 0;
+  padding: 24px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
 }
 
-.header-content {
+.contingut-capsalera {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.header-actions {
+.accions-capsalera {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.accessibility-indicator {
-  padding: var(--space-xs) var(--space-md);
+.indicador-accessibilitat {
+  padding: 8px 16px;
   background: rgba(139, 92, 246, 0.2);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   color: var(--accent-purple);
   font-size: 0.75rem;
   cursor: pointer;
 }
 
 .logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
   cursor: pointer;
-  transition: transform var(--transition-fast);
+  transition: transform 0.2s;
 }
 
 .logo img {
   width: 80%;
 }
 
-.logo img:hover {
+.logo:hover {
   transform: scale(1.02);
 }
 
-.tagline {
+.eslogan {
   font-size: 0.875rem;
   color: var(--gray-400);
   font-style: italic;
 }
 
-/* Main Content */
-.main-content {
+/* Contingut principal */
+.contingut-principal {
   flex: 1;
   position: relative;
   z-index: 10;
-  padding: var(--space-2xl) 0;
+  padding: 80px 0;
   display: flex;
   align-items: center;
 }
 
-.result-container {
+.contenidor-resultat {
   width: 100%;
 }
 
-/* Loading State */
-.loading-state {
+/* Estats de càrrega i error */
+.estat-carregant {
   text-align: center;
-  padding: var(--space-3xl);
+  padding: 80px;
 }
 
-.loading-spinner {
+.spinner {
   width: 60px;
   height: 60px;
   border: 4px solid var(--gray-700);
   border-top-color: var(--primary-500);
   border-radius: 50%;
-  margin: 0 auto var(--space-xl);
-  animation: spin 1s linear infinite;
+  margin: 0 auto 32px;
+  animation: girar 1s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+@keyframes girar {
+  to { transform: rotate(360deg); }
 }
 
-.loading-state p {
+.estat-carregant p {
   font-size: 1.25rem;
   color: white;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
 }
 
-.loading-subtext {
+.text-petit {
   font-size: 0.875rem !important;
   color: var(--gray-400) !important;
 }
 
-/* Error State */
-.error-state {
+.estat-error {
   text-align: center;
-  padding: var(--space-2xl);
+  padding: 64px;
 }
 
-.error-icon {
+.icona-error {
   font-size: 3rem;
   display: block;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
 }
 
-/* Chat FAB */
-.chat-button-container {
+/* Botó flotant del xat */
+.contenidor-boto-xat {
   position: fixed;
-  bottom: var(--space-2xl);
-  right: var(--space-2xl);
+  bottom: 64px;
+  right: 64px;
   z-index: 100;
 }
 
-.chat-fab {
+.boto-xat-flotant {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-xl);
+  gap: 12px;
+  padding: 16px 32px;
   background: linear-gradient(135deg, var(--primary-500), var(--accent-purple));
   border: none;
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   color: white;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(139, 92, 246, 0.4);
-  transition: all var(--transition-normal);
+  transition: all 0.3s;
 }
 
-.chat-fab:hover {
+.boto-xat-flotant:hover {
   transform: translateY(-3px);
   box-shadow: 0 6px 30px rgba(139, 92, 246, 0.5);
 }
 
-.chat-fab-icon {
+.icona-xat {
   font-size: 1.25rem;
 }
 
-/* Chat Panel */
-.chat-panel {
+/* Panel del xat */
+.panel-xat {
   position: fixed;
-  bottom: var(--space-lg);
-  right: var(--space-lg);
+  bottom: 24px;
+  right: 24px;
   width: 400px;
   height: 600px;
   z-index: 200;
 }
 
-/* Footer */
-.footer {
+/* Peu de pàgina */
+.peu-pagina {
   position: relative;
   z-index: 10;
-  padding: var(--space-lg) 0;
+  padding: 24px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(10px);
   text-align: center;
 }
 
-.footer p {
+.peu-pagina p {
   font-size: 0.875rem;
   color: var(--gray-500);
 }
 
-/* Transitions */
+/* Transicions */
 .fade-enter-active,
 .fade-leave-active {
   transition: opacity 0.3s ease, transform 0.3s ease;
@@ -512,22 +553,22 @@ const speakText = (text) => {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .header-content {
+  .contingut-capsalera {
     flex-direction: column;
-    gap: var(--space-sm);
+    gap: 12px;
     text-align: center;
   }
 
-  .header-actions {
+  .accions-capsalera {
     flex-direction: column;
   }
 
-  .tagline {
+  .eslogan {
     display: none;
   }
 
-  .chat-panel {
-    width: calc(100% - var(--space-lg) * 2);
+  .panel-xat {
+    width: calc(100% - 48px);
     height: 70vh;
     bottom: 0;
     right: 0;
@@ -535,24 +576,24 @@ const speakText = (text) => {
     margin: 0 auto;
   }
 
-  .chat-button-container {
-    bottom: var(--space-lg);
-    right: var(--space-lg);
+  .contenidor-boto-xat {
+    bottom: 24px;
+    right: 24px;
   }
 
-  .chat-fab-text {
+  .text-xat {
     display: none;
   }
 
-  .chat-fab {
-    padding: var(--space-md);
+  .boto-xat-flotant {
+    padding: 16px;
     border-radius: 50%;
     width: 60px;
     height: 60px;
     justify-content: center;
   }
 
-  .chat-fab-icon {
+  .icona-xat {
     font-size: 1.5rem;
   }
 }

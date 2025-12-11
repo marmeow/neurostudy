@@ -1,422 +1,500 @@
+<!-- Questionnaire.vue - Qüestionari per determinar el perfil d'aprenentatge -->
+
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 
-const props = defineProps({
-  // Nothing needed from parent for now
-})
-
 const emit = defineEmits(['complete', 'back'])
 
-// API URL
-const API_URL = 'http://localhost:3000/api'
+const URL_API = 'http://localhost:3000/api'
 
-// State
-const questionnaire = ref(null)
-const isLoading = ref(true)
-const loadError = ref(null)
-const currentSectionIndex = ref(0)
-const currentQuestionIndex = ref(0)
-const answers = ref([])
-const selectedOption = ref(null)
+// === ESTAT DEL QÜESTIONARI ===
+// Guarda totes les dades del qüestionari
+const questionari = ref(null)
 
-// Load questionnaire from API
+// Controla si està carregant
+const estaCarregant = ref(true)
+
+// Missatge d'error si no es pot carregar
+const errorCarrega = ref(null)
+
+// Índex de la secció actual
+const seccioActual = ref(0)
+
+// Índex de la pregunta dins la secció actual
+const preguntaActual = ref(0)
+
+// Array amb totes les respostes de l'usuari
+const respostes = ref([])
+
+// Opció que l'usuari ha seleccionat
+const opcioSeleccionada = ref(null)
+
+// Carreguem el qüestionari quan es munta el component
 onMounted(async () => {
   try {
-    const response = await fetch(`${API_URL}/questionnaire`)
-    const data = await response.json()
+    const response = await fetch(`${URL_API}/questionnaire`)
+    const dades = await response.json()
     
-    if (data.success) {
-      questionnaire.value = data.data
+    if (dades.success) {
+      questionari.value = dades.data
     } else {
-      loadError.value = 'Error al carregar el qüestionari'
+      errorCarrega.value = 'Error al carregar el qüestionari'
     }
   } catch (err) {
-    console.error('Error loading questionnaire:', err)
-    loadError.value = 'Error de connexió amb el servidor'
+    console.error('Error:', err)
+    errorCarrega.value = 'Error de connexió amb el servidor'
   } finally {
-    isLoading.value = false
+    estaCarregant.value = false
   }
 })
 
-// Computed
-const allQuestions = computed(() => {
-  if (!questionnaire.value) return []
-  return questionnaire.value.sections.flatMap(s => s.questions)
+// === PROPIETATS CALCULADES ===
+
+// Totes les preguntes de totes les seccions en un sol array
+const totesLesPreguntes = computed(() => {
+  if (!questionari.value) return []
+  return questionari.value.sections.flatMap(s => s.questions)
 })
 
-const totalQuestions = computed(() => allQuestions.value.length)
+// Nombre total de preguntes
+const totalPreguntes = computed(() => totesLesPreguntes.value.length)
 
-const currentGlobalIndex = computed(() => {
-  if (!questionnaire.value) return 0
+// Índex global de la pregunta actual (no només dins la secció)
+const indexGlobal = computed(() => {
+  if (!questionari.value) return 0
+  
   let index = 0
-  for (let i = 0; i < currentSectionIndex.value; i++) {
-    index += questionnaire.value.sections[i].questions.length
+  // Sumem totes les preguntes de les seccions anteriors
+  for (let i = 0; i < seccioActual.value; i++) {
+    index += questionari.value.sections[i].questions.length
   }
-  return index + currentQuestionIndex.value
+  // Afegim la pregunta actual
+  return index + preguntaActual.value
 })
 
-const progress = computed(() => {
-  if (totalQuestions.value === 0) return 0
-  return ((currentGlobalIndex.value + 1) / totalQuestions.value) * 100
+// Percentatge de progrés (0-100)
+const percentatgeProgres = computed(() => {
+  if (totalPreguntes.value === 0) return 0
+  return ((indexGlobal.value + 1) / totalPreguntes.value) * 100
 })
 
-const currentSection = computed(() => {
-  if (!questionnaire.value) return null
-  return questionnaire.value.sections[currentSectionIndex.value]
+// Dades de la secció actual
+const dadesSecció = computed(() => {
+  if (!questionari.value) return null
+  return questionari.value.sections[seccioActual.value]
 })
 
-const currentQuestion = computed(() => {
-  return currentSection.value?.questions[currentQuestionIndex.value]
+// Dades de la pregunta actual
+const dadesPregunta = computed(() => {
+  return dadesSecció.value?.questions[preguntaActual.value]
 })
 
-const isFirstQuestion = computed(() => {
-  return currentSectionIndex.value === 0 && currentQuestionIndex.value === 0
+// És la primera pregunta?
+const esPrimeraPregunta = computed(() => {
+  return seccioActual.value === 0 && preguntaActual.value === 0
 })
 
-const isLastQuestion = computed(() => {
-  return currentGlobalIndex.value === totalQuestions.value - 1
+// És l'última pregunta?
+const esUltimaPregunta = computed(() => {
+  return indexGlobal.value === totalPreguntes.value - 1
 })
 
-// Methods
-const selectOption = (option) => {
-  selectedOption.value = option
+// === FUNCIONS ===
+
+// Quan l'usuari selecciona una opció
+const seleccionarOpcio = (opcio) => {
+  opcioSeleccionada.value = opcio
 }
 
-const nextQuestion = () => {
-  if (!selectedOption.value) return
+// Anar a la següent pregunta
+const preguntaSeguent = () => {
+  // Si no hi ha opció seleccionada, no fem res
+  if (!opcioSeleccionada.value) return
 
-  // Save answer
-  answers.value.push({
-    questionId: currentQuestion.value.id,
-    optionId: selectedOption.value.id,
-    profiles: selectedOption.value.profiles
+  // Guardem la resposta
+  respostes.value.push({
+    questionId: dadesPregunta.value.id,
+    optionId: opcioSeleccionada.value.id,
+    profiles: opcioSeleccionada.value.profiles
   })
 
-  selectedOption.value = null
+  // Netegem la selecció
+  opcioSeleccionada.value = null
 
-  if (isLastQuestion.value) {
-    // Submit all answers
-    emit('complete', answers.value)
+  if (esUltimaPregunta.value) {
+    // Si és l'última pregunta, enviem totes les respostes
+    emit('complete', respostes.value)
   } else {
-    // Move to next question
-    if (currentQuestionIndex.value < currentSection.value.questions.length - 1) {
-      currentQuestionIndex.value++
+    // Si no és l'última, avancem
+    if (preguntaActual.value < dadesSecció.value.questions.length - 1) {
+      // Següent pregunta de la mateixa secció
+      preguntaActual.value++
     } else {
-      // Move to next section
-      currentSectionIndex.value++
-      currentQuestionIndex.value = 0
+      // Primera pregunta de la següent secció
+      seccioActual.value++
+      preguntaActual.value = 0
     }
   }
 }
 
-const previousQuestion = () => {
-  if (isFirstQuestion.value) {
+// Tornar a la pregunta anterior
+const preguntaAnterior = () => {
+  if (esPrimeraPregunta.value) {
+    // Si és la primera pregunta, tornem a la pantalla anterior
     emit('back')
     return
   }
 
-  // Remove last answer
-  answers.value.pop()
-  selectedOption.value = null
+  // Eliminem l'última resposta guardada
+  respostes.value.pop()
+  opcioSeleccionada.value = null
 
-  if (currentQuestionIndex.value > 0) {
-    currentQuestionIndex.value--
+  if (preguntaActual.value > 0) {
+    // Pregunta anterior de la mateixa secció
+    preguntaActual.value--
   } else {
-    // Move to previous section
-    currentSectionIndex.value--
-    currentQuestionIndex.value = questionnaire.value.sections[currentSectionIndex.value].questions.length - 1
+    // Última pregunta de la secció anterior
+    seccioActual.value--
+    preguntaActual.value = questionari.value.sections[seccioActual.value].questions.length - 1
   }
 }
 
-const getOptionLabel = (index) => {
-  return String.fromCharCode(65 + index) // A, B, C, D, E
+// Converteix un número a lletra (0=A, 1=B, etc.)
+const numeroALletra = (index) => {
+  return String.fromCharCode(65 + index) // 65 és el codi ASCII de 'A'
 }
 </script>
 
 <template>
-  <div class="questionnaire animate-slide-up">
-    <!-- Loading State -->
-    <div v-if="isLoading" class="loading-state">
-      <div class="loading-spinner"></div>
+  <div class="questionari">
+    
+    <!-- Estat de càrrega -->
+    <div v-if="estaCarregant" class="estat-carregant">
+      <div class="spinner"></div>
       <p>Carregant qüestionari...</p>
     </div>
 
-    <!-- Error State -->
-    <div v-else-if="loadError" class="error-state card">
-      <span class="error-icon">⚠️</span>
+    <!-- Estat d'error -->
+    <div v-else-if="errorCarrega" class="estat-error card">
+      <span class="icona-error">⚠️</span>
       <h3>Error</h3>
-      <p>{{ loadError }}</p>
+      <p>{{ errorCarrega }}</p>
       <button class="btn btn-primary mt-lg" @click="emit('back')">
         Tornar
       </button>
     </div>
 
-    <!-- Questionnaire -->
-    <template v-else-if="questionnaire && currentQuestion">
-      <!-- Progress Header -->
-      <div class="questionnaire-header">
-        <button class="back-btn" @click="previousQuestion">
+    <!-- Qüestionari -->
+    <template v-else-if="questionari && dadesPregunta">
+      
+      <!-- Barra superior amb progrés -->
+      <div class="capsalera-questionari">
+        <button class="boto-enrere" @click="preguntaAnterior">
           <span>←</span>
-          <span>{{ isFirstQuestion ? 'Tornar' : 'Anterior' }}</span>
+          <span>{{ esPrimeraPregunta ? 'Tornar' : 'Anterior' }}</span>
         </button>
         
-        <div class="progress-info">
-          <span class="progress-text">
-            Pregunta {{ currentGlobalIndex + 1 }} de {{ totalQuestions }}
+        <div class="info-progres">
+          <span class="text-progres">
+            Pregunta {{ indexGlobal + 1 }} de {{ totalPreguntes }}
           </span>
-          <div class="progress-bar">
-            <div class="progress-bar-fill" :style="{ width: `${progress}%` }"></div>
+          <div class="barra-progres">
+            <div 
+              class="progres-omplert" 
+              :style="{ width: `${percentatgeProgres}%` }"
+            ></div>
           </div>
         </div>
       </div>
 
-      <!-- Section Indicator -->
-      <div class="section-indicator">
-        <span class="section-badge">{{ currentSection.title }}</span>
+      <!-- Indicador de secció -->
+      <div class="indicador-seccio">
+        <span class="etiqueta-seccio">{{ dadesSecció.title }}</span>
       </div>
 
-      <!-- Question Card -->
-      <div class="question-card card-glass">
-        <h2 class="question-text">{{ currentQuestion.text }}</h2>
+      <!-- Targeta de la pregunta -->
+      <div class="targeta-pregunta card-glass">
+        <h2 class="text-pregunta">{{ dadesPregunta.text }}</h2>
 
-        <!-- Options -->
-        <div class="options-list">
+        <!-- Opcions de resposta -->
+        <div class="llista-opcions">
           <button
-            v-for="(option, index) in currentQuestion.options"
-            :key="option.id"
-            class="option-btn"
-            :class="{ selected: selectedOption?.id === option.id }"
-            @click="selectOption(option)"
+            v-for="(opcio, index) in dadesPregunta.options"
+            :key="opcio.id"
+            class="boto-opcio"
+            :class="{ seleccionada: opcioSeleccionada?.id === opcio.id }"
+            @click="seleccionarOpcio(opcio)"
           >
-            <span class="option-label">{{ getOptionLabel(index) }}</span>
-            <span class="option-text">{{ option.text }}</span>
-            <span class="option-check" v-if="selectedOption?.id === option.id">✓</span>
+            <span class="lletra-opcio">{{ numeroALletra(index) }}</span>
+            <span class="text-opcio">{{ opcio.text }}</span>
+            <span 
+              class="check-opcio" 
+              v-if="opcioSeleccionada?.id === opcio.id"
+            >✓</span>
           </button>
         </div>
       </div>
 
-      <!-- Action Button -->
-      <div class="question-actions">
+      <!-- Botó d'acció -->
+      <div class="accions-pregunta">
         <button 
           class="btn btn-primary btn-lg"
-          :disabled="!selectedOption"
-          @click="nextQuestion"
+          :disabled="!opcioSeleccionada"
+          @click="preguntaSeguent"
         >
-          {{ isLastQuestion ? 'Veure el meu perfil' : 'Següent' }}
-          <span class="btn-arrow">→</span>
+          {{ esUltimaPregunta ? 'Veure el meu perfil' : 'Següent' }}
+          <span class="fletxa-boto">→</span>
         </button>
       </div>
 
-      <!-- Keyboard Hint -->
-      <p class="keyboard-hint">
+      <!-- Consell -->
+      <p class="consell-teclat">
         💡 Consell: Tria l'opció que millor et representi
       </p>
     </template>
+
   </div>
 </template>
 
 <style scoped>
-.questionnaire {
+.questionari {
   width: 100%;
   max-width: 700px;
   margin: 0 auto;
+  animation: apareixer 0.5s ease-out;
 }
 
-/* Loading State */
-.loading-state {
+@keyframes apareixer {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Estat de càrrega */
+.estat-carregant {
   text-align: center;
-  padding: var(--space-3xl);
+  padding: 80px;
 }
 
-.loading-spinner {
+.spinner {
   width: 50px;
   height: 50px;
   border: 4px solid var(--gray-700);
   border-top-color: var(--primary-500);
   border-radius: 50%;
-  margin: 0 auto var(--space-lg);
-  animation: spin 1s linear infinite;
+  margin: 0 auto 24px;
+  animation: girar 1s linear infinite;
 }
 
-@keyframes spin {
+@keyframes girar {
   to { transform: rotate(360deg); }
 }
 
-.loading-state p {
+.estat-carregant p {
   color: var(--gray-400);
 }
 
-/* Error State */
-.error-state {
+/* Error */
+.estat-error {
   text-align: center;
-  padding: var(--space-2xl);
+  padding: 64px;
 }
 
-.error-icon {
+.icona-error {
   font-size: 3rem;
   display: block;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
 }
 
-/* Header */
-.questionnaire-header {
+/* Capçalera del qüestionari */
+.capsalera-questionari {
   display: flex;
   align-items: center;
-  gap: var(--space-lg);
-  margin-bottom: var(--space-xl);
+  gap: 24px;
+  margin-bottom: 32px;
 }
 
-.back-btn {
+.boto-enrere {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  gap: 8px;
+  padding: 8px 16px;
   background: transparent;
   border: 1px solid var(--gray-600);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   color: var(--gray-400);
   font-size: 0.875rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.back-btn:hover {
+.boto-enrere:hover {
   border-color: var(--gray-400);
   color: white;
 }
 
-.progress-info {
+.info-progres {
   flex: 1;
 }
 
-.progress-text {
+.text-progres {
   font-size: 0.875rem;
   color: var(--gray-400);
   display: block;
-  margin-bottom: var(--space-sm);
+  margin-bottom: 8px;
 }
 
-/* Section Indicator */
-.section-indicator {
+.barra-progres {
+  height: 6px;
+  background: var(--gray-700);
+  border-radius: 50px;
+  overflow: hidden;
+}
+
+.progres-omplert {
+  height: 100%;
+  background: var(--primary-500);
+  border-radius: 50px;
+  transition: width 0.3s;
+}
+
+/* Indicador de secció */
+.indicador-seccio {
   text-align: center;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
 }
 
-.section-badge {
+.etiqueta-seccio {
   display: inline-block;
-  padding: var(--space-xs) var(--space-lg);
+  padding: 8px 24px;
   background: rgba(139, 92, 246, 0.15);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   font-size: 0.75rem;
   color: var(--accent-purple);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 1px;
 }
 
-/* Question Card */
-.question-card {
-  padding: var(--space-2xl);
-  margin-bottom: var(--space-xl);
+/* Targeta de pregunta */
+.targeta-pregunta {
+  padding: 64px;
+  margin-bottom: 32px;
 }
 
-.question-text {
+.text-pregunta {
   font-size: 1.5rem;
   line-height: 1.4;
-  margin-bottom: var(--space-2xl);
+  margin-bottom: 64px;
   text-align: center;
 }
 
-/* Options */
-.options-list {
+/* Opcions */
+.llista-opcions {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.option-btn {
+.boto-opcio {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 16px;
   width: 100%;
-  padding: var(--space-lg);
+  padding: 24px;
   background: rgba(255, 255, 255, 0.03);
   border: 2px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   color: var(--gray-300);
   font-size: 1rem;
   text-align: left;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.option-btn:hover {
+.boto-opcio:hover {
   background: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.2);
 }
 
-.option-btn.selected {
+.boto-opcio.seleccionada {
   background: rgba(0, 136, 255, 0.1);
   border-color: var(--primary-500);
   color: white;
 }
 
-.option-label {
+.lletra-opcio {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   font-weight: 600;
   font-size: 0.875rem;
   flex-shrink: 0;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.option-btn.selected .option-label {
+.boto-opcio.seleccionada .lletra-opcio {
   background: var(--primary-500);
   color: white;
 }
 
-.option-text {
+.text-opcio {
   flex: 1;
 }
 
-.option-check {
+.check-opcio {
   font-size: 1.25rem;
   color: var(--primary-400);
-  animation: fadeIn 0.2s ease-out;
+  animation: apareixerCheck 0.2s ease-out;
 }
 
-/* Actions */
-.question-actions {
+@keyframes apareixerCheck {
+  from {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Accions */
+.accions-pregunta {
   display: flex;
   justify-content: center;
-  margin-bottom: var(--space-lg);
+  margin-bottom: 24px;
 }
 
-.question-actions .btn:disabled {
+.accions-pregunta .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.question-actions .btn:disabled:hover {
+.accions-pregunta .btn:disabled:hover {
   transform: none;
   box-shadow: var(--shadow-md);
 }
 
-.btn-arrow {
-  transition: transform var(--transition-fast);
+.fletxa-boto {
+  transition: transform 0.2s;
 }
 
-.question-actions .btn:not(:disabled):hover .btn-arrow {
+.accions-pregunta .btn:not(:disabled):hover .fletxa-boto {
   transform: translateX(4px);
 }
 
-/* Keyboard Hint */
-.keyboard-hint {
+/* Consell */
+.consell-teclat {
   text-align: center;
   font-size: 0.875rem;
   color: var(--gray-500);
@@ -424,25 +502,25 @@ const getOptionLabel = (index) => {
 
 /* Responsive */
 @media (max-width: 768px) {
-  .questionnaire-header {
+  .capsalera-questionari {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .back-btn {
+  .boto-enrere {
     align-self: flex-start;
   }
 
-  .question-card {
-    padding: var(--space-lg);
+  .targeta-pregunta {
+    padding: 24px;
   }
 
-  .question-text {
+  .text-pregunta {
     font-size: 1.25rem;
   }
 
-  .option-btn {
-    padding: var(--space-md);
+  .boto-opcio {
+    padding: 16px;
     font-size: 0.9rem;
   }
 }

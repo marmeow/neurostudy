@@ -1,3 +1,5 @@
+<!-- Chat.vue - Xat intel·ligent adaptat al perfil de l'usuari -->
+
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue'
 
@@ -18,17 +20,26 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const API_URL = 'http://localhost:3000/api'
+const URL_API = 'http://localhost:3000/api'
 
-// State
-const messages = ref([])
-const inputMessage = ref('')
-const isLoading = ref(false)
+// === ESTAT DEL XAT ===
+// Llista de missatges
+const missatges = ref([])
+
+// Missatge que està escrivint l'usuari
+const missatgeEntrada = ref('')
+
+// Està enviant un missatge?
+const estaCarregant = ref(false)
+
+// Missatge d'error
 const error = ref(null)
-const chatContainer = ref(null)
 
-// Profile color
-const profileColor = computed(() => {
+// Referència al contenidor de missatges per fer scroll
+const contenidorXat = ref(null)
+
+// Color del perfil
+const colorPerfil = computed(() => {
   const colors = {
     'visualis': '#8b5cf6',
     'narra': '#22c55e',
@@ -39,139 +50,153 @@ const profileColor = computed(() => {
   return colors[props.profileId] || '#0088ff'
 })
 
-// Load welcome message on mount
-const loadWelcomeMessage = async () => {
+// === FUNCIONS ===
+
+// Carrega el missatge de benvinguda
+const carregarMissatgeBenvinguda = async () => {
   try {
-    const response = await fetch(`${API_URL}/chat/welcome/${props.profileId}`)
-    const data = await response.json()
+    const response = await fetch(`${URL_API}/chat/welcome/${props.profileId}`)
+    const dades = await response.json()
     
-    if (data.success && data.data?.message) {
-      messages.value.push(data.data.message)
+    if (dades.success && dades.data?.message) {
+      missatges.value.push(dades.data.message)
     }
   } catch (err) {
-    console.error('Error loading welcome:', err)
-    messages.value.push({
+    console.error('Error carregant benvinguda:', err)
+    missatges.value.push({
       role: 'assistant',
       content: `Hola! 👋 Sóc el teu assistent adaptat al teu perfil ${props.profileDetails?.name || ''}. Com et puc ajudar?`
     })
   }
 }
 
-// Send message
-const sendMessage = async () => {
-  if (!inputMessage.value.trim() || isLoading.value) return
+// Envia un missatge
+const enviarMissatge = async () => {
+  // Si no hi ha text o està carregant, no fem res
+  if (!missatgeEntrada.value.trim() || estaCarregant.value) return
   
-  const userMessage = {
+  // Creem el missatge de l'usuari
+  const missatgeUsuari = {
     role: 'user',
-    content: inputMessage.value.trim()
+    content: missatgeEntrada.value.trim()
   }
   
-  messages.value.push(userMessage)
-  inputMessage.value = ''
-  isLoading.value = true
+  // Afegim el missatge a la llista
+  missatges.value.push(missatgeUsuari)
+  
+  // Netegem l'entrada
+  missatgeEntrada.value = ''
+  
+  // Marquem que està carregant
+  estaCarregant.value = true
   error.value = null
   
-  await scrollToBottom()
+  // Fem scroll avall
+  await ferScrollAvall()
   
   try {
-    const response = await fetch(`${API_URL}/chat`, {
+    // Enviem el missatge a l'API
+    const response = await fetch(`${URL_API}/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messages: messages.value.filter(m => m.role !== 'system'),
+        messages: missatges.value.filter(m => m.role !== 'system'),
         profileId: props.profileId,
         accessibilitySettings: props.accessibilitySettings
       })
     })
     
-    const data = await response.json()
+    const dades = await response.json()
     
-    if (data.success && data.data?.message) {
-      messages.value.push(data.data.message)
-    } else if (data.fallback) {
-      messages.value.push(data.fallback)
+    if (dades.success && dades.data?.message) {
+      missatges.value.push(dades.data.message)
+    } else if (dades.fallback) {
+      missatges.value.push(dades.fallback)
     } else {
-      error.value = data.error || 'Error al enviar el missatge'
+      error.value = dades.error || 'Error al enviar el missatge'
     }
   } catch (err) {
-    console.error('Chat error:', err)
+    console.error('Error xat:', err)
     error.value = 'Error de connexió'
   } finally {
-    isLoading.value = false
-    await scrollToBottom()
+    estaCarregant.value = false
+    await ferScrollAvall()
   }
 }
 
-// Auto-scroll to bottom
-const scrollToBottom = async () => {
+// Fa scroll automàtic fins avall
+const ferScrollAvall = async () => {
   await nextTick()
-  if (chatContainer.value) {
-    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  if (contenidorXat.value) {
+    contenidorXat.value.scrollTop = contenidorXat.value.scrollHeight
   }
 }
 
-// Handle enter key
-const handleKeydown = (e) => {
+// Gestiona la tecla Enter
+const gesionarTecla = (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
-    sendMessage()
+    enviarMissatge()
   }
 }
 
-// Format message content (simple markdown)
-const formatMessage = (content) => {
-  if (!content) return ''
+// Formata el text del missatge (markdown senzill)
+const formatarMissatge = (contingut) => {
+  if (!contingut) return ''
   
-  // Bold
-  let formatted = content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-  // Italic
-  formatted = formatted.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  // Line breaks
-  formatted = formatted.replace(/\n/g, '<br>')
+  // Negreta **text**
+  let formatat = contingut.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   
-  return formatted
+  // Cursiva *text*
+  formatat = formatat.replace(/\*(.*?)\*/g, '<em>$1</em>')
+  
+  // Salts de línia
+  formatat = formatat.replace(/\n/g, '<br>')
+  
+  return formatat
 }
 
-// Initialize
-loadWelcomeMessage()
+// Inicialitza el xat
+carregarMissatgeBenvinguda()
 </script>
 
 <template>
-  <div class="chat-container" :style="{ '--profile-color': profileColor }">
-    <!-- Chat Header -->
-    <div class="chat-header">
-      <div class="chat-profile">
-        <span class="profile-emoji">{{ profileDetails?.emoji || '🧠' }}</span>
-        <div class="profile-info">
+  <div class="contenidor-xat" :style="{ '--color-perfil': colorPerfil }">
+    
+    <!-- Capçalera del xat -->
+    <div class="capsalera-xat">
+      <div class="info-perfil-xat">
+        <span class="emoji-perfil">{{ profileDetails?.emoji || '🧠' }}</span>
+        <div class="dades-perfil">
           <h3>NeuroStudy AI</h3>
-          <span class="profile-badge">Adaptat a {{ profileDetails?.name || 'el teu perfil' }}</span>
+          <span class="distintiu-perfil">Adaptat a {{ profileDetails?.name || 'el teu perfil' }}</span>
         </div>
       </div>
-      <button class="close-btn" @click="emit('close')" aria-label="Tancar xat">
+      <button class="boto-tancar" @click="emit('close')" aria-label="Tancar xat">
         ✕
       </button>
     </div>
 
-    <!-- Messages Container -->
-    <div class="messages-container" ref="chatContainer">
+    <!-- Contenidor de missatges -->
+    <div class="contenidor-missatges" ref="contenidorXat">
       <div 
-        v-for="(message, index) in messages" 
+        v-for="(missatge, index) in missatges" 
         :key="index"
-        class="message"
-        :class="message.role"
+        class="missatge"
+        :class="missatge.role"
       >
-        <div class="message-avatar">
-          <span v-if="message.role === 'assistant'">🧠</span>
+        <div class="avatar-missatge">
+          <span v-if="missatge.role === 'assistant'">🧠</span>
           <span v-else>👤</span>
         </div>
-        <div class="message-content" v-html="formatMessage(message.content)"></div>
+        <div class="contingut-missatge" v-html="formatarMissatge(missatge.content)"></div>
       </div>
 
-      <!-- Loading indicator -->
-      <div v-if="isLoading" class="message assistant loading">
-        <div class="message-avatar">🧠</div>
-        <div class="message-content">
-          <div class="typing-indicator">
+      <!-- Indicador de "està escrivint..." -->
+      <div v-if="estaCarregant" class="missatge assistant carregant">
+        <div class="avatar-missatge">🧠</div>
+        <div class="contingut-missatge">
+          <div class="indicador-escrivint">
             <span></span>
             <span></span>
             <span></span>
@@ -179,92 +204,93 @@ loadWelcomeMessage()
         </div>
       </div>
 
-      <!-- Error message -->
-      <div v-if="error" class="error-message">
+      <!-- Missatge d'error -->
+      <div v-if="error" class="missatge-error">
         <span>⚠️</span>
         <span>{{ error }}</span>
       </div>
     </div>
 
-    <!-- Input Area -->
-    <div class="chat-input-container">
+    <!-- Àrea d'entrada de text -->
+    <div class="contenidor-entrada">
       <textarea
-        v-model="inputMessage"
-        @keydown="handleKeydown"
+        v-model="missatgeEntrada"
+        @keydown="gesionarTecla"
         placeholder="Escriu el teu missatge..."
         rows="1"
-        :disabled="isLoading"
+        :disabled="estaCarregant"
       ></textarea>
       <button 
-        class="send-btn" 
-        @click="sendMessage"
-        :disabled="!inputMessage.trim() || isLoading"
+        class="boto-enviar" 
+        @click="enviarMissatge"
+        :disabled="!missatgeEntrada.trim() || estaCarregant"
       >
         <span>➤</span>
       </button>
     </div>
 
-    <!-- Quick suggestions -->
-    <div class="quick-suggestions" v-if="messages.length <= 1">
-      <span class="suggestions-label">Prova amb:</span>
-      <button @click="inputMessage = 'Explica\'m què és JavaScript'">
+    <!-- Suggeriments ràpids -->
+    <div class="suggeriments-rapids" v-if="missatges.length <= 1">
+      <span class="etiqueta-suggeriments">Prova amb:</span>
+      <button @click="missatgeEntrada = 'Explica\'m què és JavaScript'">
         📚 JavaScript
       </button>
-      <button @click="inputMessage = 'Com funciona la intel·ligència artificial?'">
+      <button @click="missatgeEntrada = 'Com funciona la intel·ligència artificial?'">
         🤖 IA
       </button>
-      <button @click="inputMessage = 'Dona\'m consells per estudiar millor'">
+      <button @click="missatgeEntrada = 'Dona\'m consells per estudiar millor'">
         💡 Consells
       </button>
     </div>
+
   </div>
 </template>
 
 <style scoped>
-.chat-container {
+.contenidor-xat {
   display: flex;
   flex-direction: column;
   height: 100%;
   max-height: 600px;
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(20px);
-  border-radius: var(--radius-xl);
+  border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 }
 
-/* Header */
-.chat-header {
+/* Capçalera */
+.capsalera-xat {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-lg);
+  padding: 24px;
   background: rgba(255, 255, 255, 0.05);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chat-profile {
+.info-perfil-xat {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.profile-emoji {
+.emoji-perfil {
   font-size: 2rem;
 }
 
-.profile-info h3 {
+.dades-perfil h3 {
   font-size: 1rem;
   margin: 0;
   color: white;
 }
 
-.profile-badge {
+.distintiu-perfil {
   font-size: 0.75rem;
-  color: var(--profile-color);
+  color: var(--color-perfil);
 }
 
-.close-btn {
+.boto-tancar {
   width: 32px;
   height: 32px;
   border: none;
@@ -272,37 +298,48 @@ loadWelcomeMessage()
   color: var(--gray-400);
   border-radius: 50%;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.close-btn:hover {
+.boto-tancar:hover {
   background: rgba(255, 255, 255, 0.2);
   color: white;
 }
 
-/* Messages */
-.messages-container {
+/* Missatges */
+.contenidor-missatges {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-lg);
+  padding: 24px;
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: 16px;
 }
 
-.message {
+.missatge {
   display: flex;
-  gap: var(--space-md);
+  gap: 16px;
   max-width: 85%;
-  animation: fadeIn 0.3s ease-out;
+  animation: apareixerMissatge 0.3s ease-out;
 }
 
-.message.user {
+@keyframes apareixerMissatge {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.missatge.user {
   align-self: flex-end;
   flex-direction: row-reverse;
 }
 
-.message-avatar {
+.avatar-missatge {
   width: 36px;
   height: 36px;
   display: flex;
@@ -314,154 +351,149 @@ loadWelcomeMessage()
   font-size: 1.25rem;
 }
 
-.message.assistant .message-avatar {
-  background: var(--profile-color);
+.missatge.assistant .avatar-missatge {
+  background: var(--color-perfil);
 }
 
-.message-content {
-  padding: var(--space-md) var(--space-lg);
-  border-radius: var(--radius-lg);
+.contingut-missatge {
+  padding: 16px 24px;
+  border-radius: 12px;
   line-height: 1.5;
   font-size: 0.95rem;
 }
 
-.message.assistant .message-content {
+.missatge.assistant .contingut-missatge {
   background: rgba(255, 255, 255, 0.08);
   color: var(--gray-200);
-  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-left-radius: 6px;
 }
 
-.message.user .message-content {
-  background: var(--profile-color);
+.missatge.user .contingut-missatge {
+  background: var(--color-perfil);
   color: white;
-  border-bottom-right-radius: var(--radius-sm);
+  border-bottom-right-radius: 6px;
 }
 
-/* Typing indicator */
-.typing-indicator {
+/* Indicador d'escriure */
+.indicador-escrivint {
   display: flex;
   gap: 4px;
-  padding: var(--space-sm) 0;
+  padding: 8px 0;
 }
 
-.typing-indicator span {
+.indicador-escrivint span {
   width: 8px;
   height: 8px;
   background: var(--gray-400);
   border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out both;
+  animation: botar 1.4s infinite ease-in-out both;
 }
 
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+.indicador-escrivint span:nth-child(1) { animation-delay: -0.32s; }
+.indicador-escrivint span:nth-child(2) { animation-delay: -0.16s; }
 
-@keyframes bounce {
+@keyframes botar {
   0%, 80%, 100% { transform: scale(0); }
   40% { transform: scale(1); }
 }
 
 /* Error */
-.error-message {
+.missatge-error {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  gap: 8px;
+  padding: 12px 16px;
   background: rgba(239, 68, 68, 0.2);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   color: #fca5a5;
   font-size: 0.875rem;
 }
 
-/* Input */
-.chat-input-container {
+/* Entrada de text */
+.contenidor-entrada {
   display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
+  gap: 12px;
+  padding: 16px 24px;
   background: rgba(255, 255, 255, 0.05);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.chat-input-container textarea {
+.contenidor-entrada textarea {
   flex: 1;
-  padding: var(--space-md);
+  padding: 16px;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   color: white;
   font-family: inherit;
   font-size: 0.95rem;
   resize: none;
   outline: none;
-  transition: border-color var(--transition-fast);
+  transition: border-color 0.2s;
 }
 
-.chat-input-container textarea:focus {
-  border-color: var(--profile-color);
+.contenidor-entrada textarea:focus {
+  border-color: var(--color-perfil);
 }
 
-.chat-input-container textarea::placeholder {
+.contenidor-entrada textarea::placeholder {
   color: var(--gray-500);
 }
 
-.send-btn {
+.boto-enviar {
   width: 48px;
   height: 48px;
   border: none;
-  background: var(--profile-color);
+  background: var(--color-perfil);
   color: white;
-  border-radius: var(--radius-lg);
+  border-radius: 12px;
   cursor: pointer;
   font-size: 1.25rem;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.send-btn:hover:not(:disabled) {
+.boto-enviar:hover:not(:disabled) {
   transform: scale(1.05);
   filter: brightness(1.1);
 }
 
-.send-btn:disabled {
+.boto-enviar:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* Quick suggestions */
-.quick-suggestions {
+/* Suggeriments ràpids */
+.suggeriments-rapids {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-sm);
-  padding: 0 var(--space-lg) var(--space-md);
+  gap: 8px;
+  padding: 0 24px 16px;
   align-items: center;
 }
 
-.suggestions-label {
+.etiqueta-suggeriments {
   font-size: 0.75rem;
   color: var(--gray-500);
 }
 
-.quick-suggestions button {
-  padding: var(--space-xs) var(--space-md);
+.suggeriments-rapids button {
+  padding: 8px 16px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-full);
+  border-radius: 50px;
   color: var(--gray-400);
   font-size: 0.75rem;
   cursor: pointer;
-  transition: all var(--transition-fast);
+  transition: all 0.2s;
 }
 
-.quick-suggestions button:hover {
+.suggeriments-rapids button:hover {
   background: rgba(255, 255, 255, 0.1);
-  border-color: var(--profile-color);
+  border-color: var(--color-perfil);
   color: white;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
 }
 </style>
